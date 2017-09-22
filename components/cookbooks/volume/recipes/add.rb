@@ -428,14 +428,19 @@ end
 ruby_block 'create-ephemeral-volume-on-azure-vm' do
   only_if { (storage.nil? && token_class =~ /azure/ && _fstype != 'tmpfs') }
   block do
-     initial_mountpoint = '/mnt/resource'
-     restore_script_dir = '/opt/oneops/azure-restore-ephemeral-mntpts'
-     script_fullpath_name = "#{restore_script_dir}/#{logical_name}.sh"
+    initial_mountpoint = '/mnt/resource'
+    restore_script_dir = '/opt/oneops/azure-restore-ephemeral-mntpts'
+    script_fullpath_name = "#{restore_script_dir}/#{logical_name}.sh"
     `mkdir #{restore_script_dir}`
     `touch #{script_fullpath_name}`
 
+    `echo "#!/bin/bash" > #{script_fullpath_name}`
+    `echo "EXIT_SUCCESS=0" >> #{script_fullpath_name}`
+    `echo "EXIT_CRITICAL=2" >> #{script_fullpath_name}`
+    `echo "IS_FORMATTED=0" >> #{script_fullpath_name}`
+
     Chef::Log.info("unmounting #{initial_mountpoint}")
-    `echo "umount #{initial_mountpoint}" > #{script_fullpath_name}`
+    `echo "umount #{initial_mountpoint}" >> #{script_fullpath_name}`
 
     ephemeralDevice = '/dev/sdb1'
     `echo "pvcreate -f #{ephemeralDevice}" >> #{script_fullpath_name}`
@@ -446,6 +451,7 @@ ruby_block 'create-ephemeral-volume-on-azure-vm' do
       l_switch = "-l"
     end
     `echo ""yes" | lvcreate #{l_switch} #{size} -n #{logical_name} #{platform_name}-eph" >> #{script_fullpath_name}`
+    `echo "mount /dev/#{platform_name}-eph/#{logical_name} #{_mount_point}" >> #{script_fullpath_name}`
     `echo "if [ ! -d #{_mount_point}/lost+found ]" >> #{script_fullpath_name}`
     `echo "then" >> #{script_fullpath_name}`
     if node[:platform_family] == "rhel" && (node[:platform_version]).to_i >= 7
@@ -454,17 +460,25 @@ ruby_block 'create-ephemeral-volume-on-azure-vm' do
     else
       `echo "mkfs -t #{_fstype} -f /dev/#{platform_name}-eph/#{logical_name}" >> #{script_fullpath_name}`
     end
-    `echo "fi" >> #{script_fullpath_name}`
     `echo "mkdir -p #{_mount_point}" >> #{script_fullpath_name}`
     `echo "mount /dev/#{platform_name}-eph/#{logical_name} #{_mount_point}" >> #{script_fullpath_name}`
+    `echo "$IS_FORMATTED=1" >> #{script_fullpath_name}`
+    `echo "fi" >> #{script_fullpath_name}`
+
     `sudo chmod +x #{script_fullpath_name}`
-     awk_cmd = "awk /#{logical_name}.sh/ /etc/rc.d/rc.local | wc -l"
-    `echo "count=\\$(#{awk_cmd})">> #{script_fullpath_name}` # Check whether script is already added to rc.local, add restore script if not present.
-    `echo "if [ \\$count == 0 ];then" >> #{script_fullpath_name}` 
-     `echo "sudo echo \\"sh #{script_fullpath_name}\\" >> \/etc\/rc.d\/rc.local" >> #{script_fullpath_name}`
-     `echo "fi" >> #{script_fullpath_name}`
+    awk_cmd = "awk /#{logical_name}.sh/ /etc/rc.d/rc.local | wc -l"
+    `echo "count=\\$(#{awk_cmd})" >> #{script_fullpath_name}` # Check whether script is already added to rc.local, add restore script if not present.
+    `echo "if [ \\$count == 0 ];then" >> #{script_fullpath_name}`
+    `echo "sudo echo \\"sh #{script_fullpath_name}\\" >> \/etc\/rc.d\/rc.local" >> #{script_fullpath_name}`
+    `echo "$EXIT_SUCCESS" >> #{script_fullpath_name}`
+    `echo "elif [ $IS_FORMATTED == 1 ];then" >> #{script_fullpath_name}`
+    `echo "echo \\"CRITICAL - Your VM Ephemeral Disk was lost. Mount Points are restored but data is lost\\"" >> #{script_fullpath_name}`
+    `echo "exit $EXIT_CRITICAL" >> #{script_fullpath_name}`
+    `echo "else" >> #{script_fullpath_name}`
+    `echo "exit $EXIT_SUCCESS" >> #{script_fullpath_name}`
+    `echo "fi" >> #{script_fullpath_name}`
     `sudo chmod +x /etc/rc.d/rc.local`
-     Chef::Log.info("executing #{script_fullpath_name} script")
+    Chef::Log.info("executing #{script_fullpath_name} script")
     `sudo sh "#{script_fullpath_name}"`
   end
 end

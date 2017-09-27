@@ -1,4 +1,4 @@
-name             "Keypair"
+name             "keypair"
 description      "General purpose key pairs"
 version          "0.1"
 maintainer       "OneOps, Inc."

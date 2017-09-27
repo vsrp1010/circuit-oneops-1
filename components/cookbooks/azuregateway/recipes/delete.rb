@@ -1,13 +1,7 @@
-# **Rubocop Suppression**
-# rubocop:disable LineLength
-
 require File.expand_path('../../libraries/application_gateway.rb', __FILE__)
 require File.expand_path('../../../azure/libraries/public_ip.rb', __FILE__)
-require 'azure_mgmt_network'
 
 ::Chef::Recipe.send(:include, Utils)
-::Chef::Recipe.send(:include, Azure::ARM::Network)
-::Chef::Recipe.send(:include, Azure::ARM::Network::Models)
 ::Chef::Recipe.send(:include, AzureNetwork)
 
 # get platform resource group and availability set
@@ -36,10 +30,12 @@ asmb_name = assembly_name.gsub(/-/, '').downcase
 plat_name = platform_name.gsub(/-/, '').downcase
 env_name = environment_name.gsub(/-/, '').downcase
 ag_name = "ag-#{plat_name}"
-
-tenant_id = ag_service[:ciAttributes][:tenant_id]
-client_id = ag_service[:ciAttributes][:client_id]
-client_secret = ag_service[:ciAttributes][:client_secret]
+cred_hash = {
+  tenant_id: ag_service[:ciAttributes][:tenant_id],
+  client_secret: ag_service[:ciAttributes][:client_secret],
+  client_id: ag_service[:ciAttributes][:client_id],
+  subscription_id: subscription_id
+}
 
 OOLog.info("Cloud Name: #{cloud_name}")
 OOLog.info("Org: #{org_name}")
@@ -52,14 +48,16 @@ OOLog.info("Resource Group: #{resource_group_name}")
 OOLog.info("Application Gateway: #{ag_name}")
 
 begin
-  credentials = Utils.get_credentials(tenant_id, client_id, client_secret)
-  application_gateway = AzureNetwork::Gateway.new(resource_group_name, ag_name, credentials, subscription_id)
+  application_gateway = AzureNetwork::Gateway.new(resource_group_name, ag_name, cred_hash)
 
-  public_ip_name = Utils.get_component_name('lb_publicip', node.workorder.rfcCi.ciId)
+  public_ip_name = Utils.get_component_name('ag_publicip', node.workorder.rfcCi.ciId)
 
   application_gateway.delete
-  public_ip_obj = AzureNetwork::PublicIp.new(credentials, subscription_id)
-  public_ip_obj.delete(resource_group_name, public_ip_name)
+
+  public_ip_obj = AzureNetwork::PublicIp.new(cred_hash)
+  if ag_service[:ciAttributes][:express_route_enabled] == 'false'
+    public_ip_obj.delete(resource_group_name, public_ip_name)
+  end
 rescue => e
   OOLog.fatal("Error deleting Application Gateway: #{e.message}")
 end

@@ -2,23 +2,25 @@ require 'openssl'
 
 include_recipe "shared::set_provider"
 
-env_ci_id = node.workorder.payLoad.Environment[0][:ciId].to_s
-env_ci_name = node.workorder.payLoad.Environment[0][:ciName]
+puts "env_ci_id: #{node[:workorder][:payLoad].inspect}"
 
-if node.workorder.rfcCi.ciAttributes.has_key?("key_name") && !node.workorder.rfcCi.ciAttributes.key_name.empty?
-   node.set["kp_name"] = node.workorder.rfcCi.ciAttributes.key_name
+env_ci_id = node[:workorder][:payLoad][:Environment][0][:ciId].to_s
+env_ci_name = node[:workorder][:payLoad][:Environment][0][:ciName]
+
+if node[:workorder][:rfcCi][:ciAttributes].has_key?("key_name") && !node[:workorder][:rfcCi][:ciAttributes][:key_name].empty?
+   node.set["kp_name"] = node[:workorder][:rfcCi][:ciAttributes][:key_name]
 else
-   node.set["kp_name"] = 'oneops_key.' + env_ci_id + '.' + env_ci_name + '.' + node.workorder.box.ciId.to_s
+   node.set["kp_name"] = 'oneops_key.' + env_ci_id + '.' + env_ci_name + '.' + node[:workorder][:box][:ciId].to_s
 end
 
-if node.workorder.rfcCi.has_key?("rfcAction")
-   if node.workorder.rfcCi.rfcAction.downcase == 'add'
-      node.set["key_name"] = 'oo.' + env_ci_id + '.' + env_ci_name + '.' + node.workorder.box.ciId.to_s + '-' + node.workorder.rfcCi.ciId.to_s
+if node[:workorder][:rfcCi].has_key?("rfcAction")
+   if node[:workorder][:rfcCi][:rfcAction].downcase == 'add'
+      node.set["key_name"] = 'oo.' + env_ci_id + '.' + env_ci_name + '.' + node[:workorder][:box][:ciId].to_s + '-' + node[:workorder][:rfcCi][:ciId].to_s
    end
 end
 
-if !node.keypair.has_key?("private") ||
-   node.keypair.private == 'keygen'
+if !node[:keypair].has_key?("private") ||
+   node[:keypair][:private] == 'keygen'
    
   Chef::Log.info("generating ssh keys")
   

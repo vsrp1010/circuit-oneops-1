@@ -21,8 +21,7 @@ zone_name =
 cloud_service = node['workorder']['services']['dns'][cloud_name]
 service_attrs = cloud_service['ciAttributes']
 
-dns = AzureDns::DNS.new(service_attrs, node['azure_rest_token'],
-                        node['platform-resource-group'])
+dns = AzureDns::DNS.new(node['platform-resource-group'], node['azure_rest_token'], service_attrs)
 
 # ex) customer_domain: env.asm.org.oneops.com
 customer_domain = dns.normalize_customer_domain(node.customer_domain)

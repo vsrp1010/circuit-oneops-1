@@ -16,7 +16,7 @@
 # builds ssh cmd for remote compute cmd
 #
 
-unless node.workorder.payLoad.has_key? "SecuredBy"
+unless node[:workorder][:payLoad].has_key? "SecuredBy"
   Chef::Log.error("unsupported, missing SecuredBy")
   return false
 end
@@ -28,7 +28,7 @@ puuid = (0..32).to_a.map{|a| rand(32).to_s(32)}.join
 ssh_key_file = "/tmp/"+puuid
 
 file ssh_key_file do
-  content node.workorder.payLoad[:SecuredBy][0][:ciAttributes][:private]
+  content node[:workorder][:payLoad][:SecuredBy][0][:ciAttributes][:private]
   mode 0600
 end
 
@@ -37,21 +37,21 @@ ruby_block 'ssh cmds' do
   block do
 
     user = "root"
-    if node.has_key?("use_initial_user") && node.use_initial_user == true &&
-       !node.initial_user.nil? && node.initial_user != "unset"
-      user = node.initial_user
+    if node.has_key?("use_initial_user") && node[:use_initial_user] == true &&
+       !node[:initial_user].nil? && node[:initial_user] != "unset"
+      user = node[:initial_user]
     end
-    os = node.workorder.payLoad.os.first
+    os = node[:workorder][:payLoad][:os].first
     if os['ciAttributes']['ostype'] =~ /win/
       user = 'oneops'
     end
     
     ssh_options = "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 
-    if node.ip.nil? || node.ip.empty?
+    if node[:ip].nil? || node[:ip].empty?
       ip = "IP"
     else
-      ip = node.ip
+      ip = node[:ip]
     end
 
 
@@ -60,7 +60,7 @@ ruby_block 'ssh cmds' do
     bwlimit = ''
     if (node[:provider_class] == 'vsphere')
       cloud_name = node[:workorder][:cloud][:ciName]
-      bandwidth_throttle_rate = node.workorder.services[:compute][cloud_name][:ciAttributes][:bandwidth_throttle_rate]
+      bandwidth_throttle_rate = node[:workorder][:services][:compute][cloud_name][:ciAttributes][:bandwidth_throttle_rate]
       if !bandwidth_throttle_rate.nil? || !bandwidth_throttle_rate.empty?
         begin
           Integer(bandwidth_throttle_rate,10)

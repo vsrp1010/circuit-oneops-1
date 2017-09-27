@@ -6,13 +6,13 @@
 is_kp_by_zone = false
 needs_update = false
 
-ci = node.workorder.rfcCi
-public_key = node.keypair.public
+ci = node[:workorder][:rfcCi]
+public_key = node[:keypair][:public]
 old_public_key = nil
 
 
 # ok to use the public_ip for this existing group
-node.workorder.payLoad.secures.each do |compute|
+node[:workorder][:payLoad][:secures].each do |compute|
 
   ip = nil
   # use public_ip (ec2) or private_ip (openstack) 

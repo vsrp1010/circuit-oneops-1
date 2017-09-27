@@ -1,4 +1,4 @@
-name             "Secgroup"
+name             "secgroup"
 description      "Security group"
 version          "0.1"
 maintainer       "OneOps, Inc."

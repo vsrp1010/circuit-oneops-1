@@ -1,0 +1,6 @@
+{
+  "id" : "/subscriptions/########-####-####-####-############/resourceGroups/fog-rg/providers/Microsoft.Network/virtualNetworks/fog-vnet/subnets/fog-subnet",
+  "addressPrefix" : "10.1.0.0/24",
+  "provisioningState" : "Succeeded",
+  "name" : "fog-subnet"
+}

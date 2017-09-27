@@ -20,7 +20,7 @@ cloud_name = node[:workorder][:cloud][:ciName]
 provider = node[:workorder][:services][:compute][cloud_name][:ciClassName].gsub("cloud.service.","").downcase
 if provider =~ /azure/
   include_recipe "azure::reboot_node"
-  if node.reboot_result == "Error"
+  if node[:reboot_result] == "Error"
     e = Exception.new("no backtrace")
     e.set_backtrace("no backtrace")
     raise e
@@ -30,8 +30,8 @@ elsif provider =~ /vsphere/
   include_recipe "vsphere::powercycle_node"
 else
 
-  instance_id = node.workorder.ci[:ciAttributes][:instance_id]
-  server = node.iaas_provider.servers.get instance_id
+  instance_id = node[:workorder][:ci][:ciAttributes][:instance_id]
+  server = node[:iaas_provider].servers.get instance_id
 
   if server == nil
     Chef::Log.error("cannot find server: #{instance_id}")

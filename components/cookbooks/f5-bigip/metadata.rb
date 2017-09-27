@@ -1,4 +1,4 @@
-name             "F5-bigip"
+name             "f5-bigip"
 description      "F5 BigIP"
 version          "0.1"
 maintainer       "OneOps"

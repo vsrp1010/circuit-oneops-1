@@ -1,5 +1,9 @@
+require 'fog/azurerm'
 require 'chef'
+
+
 require ::File.expand_path('../../../azure/constants', __FILE__)
+require ::File.expand_path('../../../azure_base/libraries/logger', __FILE__)
 
 # **Rubocop Suppression**
 # rubocop:disable MethodLength
@@ -9,69 +13,46 @@ require ::File.expand_path('../../../azure/constants', __FILE__)
 module AzureDns
   # DNS Zone Class
   class Zone
-    def initialize(dns_attributes, token, platform_resource_group)
-      @subscription = dns_attributes['subscription']
-      @dns_resource_group = platform_resource_group
-      @zone = dns_attributes['zone']
-      @token = token
+
+    attr_accessor :dns_client
+
+    def initialize(dns_attributes, resource_group)
+      credentials = {
+          tenant_id: dns_attributes[:tenant_id],
+          client_secret: dns_attributes[:client_secret],
+          client_id: dns_attributes[:client_id],
+          subscription_id: dns_attributes[:subscription]
+      }
+      @dns_client = Fog::DNS::AzureRM.new(credentials)
+      @resource_group = resource_group
+      @zone_name = dns_attributes[:zone]
     end
 
     def check_for_zone
-      # construct the URL to get the records from the dns zone
-      resource_url = "#{AZURE_RESOURCE}subscriptions/#{@subscription}/resourceGroups/#{@dns_resource_group}/providers/Microsoft.Network/dnsZones/#{@zone}?api-version=2015-05-04-preview"
-      puts "AzureDns:Zone - Resource URL is: #{resource_url}"
       begin
-        dns_response = RestClient.get(
-          resource_url,
-          accept: 'application/json',
-          content_type: 'application/json',
-          authorization: @token
-        )
-        puts dns_response
-        dns_hash = JSON.parse(dns_response)
-        if dns_hash.key?('id') && !dns_hash['id'].nil?
-          puts 'AzureDns:Zone - Zone Exists, no need to create'
-        end
+        response = @dns_client.zones.check_zone_exists?(@resource_group, @zone_name)
+      rescue MsRestAzure::AzureOperationError => e
+        OOLog.fatal("FATAL ERROR getting DNS Zone....: #{e.body}")
+      rescue => e
+        return false if e == 'ResourceNotFound'
+      end
 
+      if response
+        OOLog.info("AzureDns:Zone - Zone Exists in the Resource Group: #{@resource_group}. No need to create ")
         true
-      rescue RestClient::Exception => e
-        if e.http_code == 404
-          puts('AzureDns:Zone - 404 code, Zone does not exist.  Need to create')
-          false
-        else
-          msg = "Exception checking if the zone exists: #{@zone}"
-          puts "***FAULT:FATAL=#{msg}"
-          Chef::Log.error("AzureDns:Zone - Excpetion is: #{e.message}")
-          e = Exception.new('no backtrace')
-          e.set_backtrace('')
-          raise e
-        end
+      else
+        false
       end
     end
 
     def create
-      # construct the URL to get the records from the dns zone
-      resource_url = "#{AZURE_RESOURCE}subscriptions/#{@subscription}/resourceGroups/#{@dns_resource_group}/providers/Microsoft.Network/dnsZones/#{@zone}?api-version=2015-05-04-preview"
-      puts "AzureDns:Zone - Resource URL is: #{resource_url}"
-      body = {
-        location: 'global',
-        tags: {},
-        properties: {} }
+      OOLog.info("AzureDns:Zone - Creating Zone: #{@zone_name} in the Resource Group: #{@resource_group}.")
       begin
-        dns_response = RestClient.put(
-          resource_url,
-          body.to_json,
-          accept: 'application/json',
-          content_type: 'application/json',
-          authorization: @token)
-        puts dns_response
+        @dns_client.zones.create(resource_group: @resource_group, name: @zone_name, location: 'global')
+      rescue MsRestAzure::AzureOperationError => e
+         OOLog.fatal("FATAL ERROR creating DNS Zone....: #{e.body}")
       rescue => e
-        msg = "Exception creating zone: #{@zone}"
-        puts "***FAULT:FATAL=#{msg}"
-        Chef::Log.error("AzureDns:Zone - Excpetion is: #{e.message}")
-        e = Exception.new('no backtrace')
-        e.set_backtrace('')
-        raise e
+        OOLog.fatal("DNS Zone creation error....: #{e.message}")
       end
     end
   end

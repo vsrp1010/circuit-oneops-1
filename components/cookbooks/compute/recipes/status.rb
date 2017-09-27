@@ -16,7 +16,7 @@ require 'fog'
 
 include_recipe "shared::set_provider"
 
-ci = node.workorder.ci
+ci = node[:workorder][:ci]
 Chef::Log.debug("ci attrs:"+ci[:ciAttributes].inspect.gsub("\n"," "))  
 instance_id = ci[:ciAttributes][:instance_id]
 
@@ -29,7 +29,7 @@ if provider =~ /azure/
 		 return false
 	end
 else
-  server = node.iaas_provider.servers.get instance_id
+  server = node[:iaas_provider].servers.get instance_id
   
   if server == nil
     Chef::Log.error("cannot find server by instance_id: "+instance_id)

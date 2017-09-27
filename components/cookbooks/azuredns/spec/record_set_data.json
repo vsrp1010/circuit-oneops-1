@@ -1,0 +1,12 @@
+{
+  "id" : "/subscriptions/########-####-####-####-############/resourceGroups/resource_group/providers/Microsoft.Network/dnszones/zone_name/record_type/name",
+  "name" : "name",
+  "type" : "Microsoft.Network/dnszones/record_type",
+  "etag" : "########-####-####-####-############",
+  "location" : "global",
+  "tags" : {},
+  "metadata" : {},
+  "fqdn" : "name.zone_name",
+  "TTL" : 10,
+  "ARecords" : [ {"ipv4Address" : "10.1.2.0" }]
+}

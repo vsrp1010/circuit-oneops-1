@@ -15,7 +15,7 @@
 ci = node[:workorder][:ci] || node[:workorder][:rfcCi]
 
 if node.has_key?("ip")
-  Chef::Log.info("using ip: #{node.ip}")
+  Chef::Log.info("using ip: #{node[:ip]}")
   return
 end
 
@@ -32,7 +32,7 @@ if provider =~ /openstack|azure/
 else
   ip = ci[:ciAttributes][:public_ip]
 end
-# once inductor ActionOrderExecutor is released with change to populate node.ip_attribute we can move to:
-# node.set[:ip] = ci[:ciAttributes][node.ip_attribute]
+# once inductor ActionOrderExecutor is released with change to populate node[:ip_attribute] we can move to:
+# node.set[:ip] = ci[:ciAttributes][node[:ip_attribute]]
 
 node.set[:ip] = ip

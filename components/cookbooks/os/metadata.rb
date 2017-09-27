@@ -1,4 +1,4 @@
-name "Os"
+name "os"
 description "Installs/Configures OperatingSystem"
 maintainer "OneOps"
 maintainer_email "support@oneops.com"

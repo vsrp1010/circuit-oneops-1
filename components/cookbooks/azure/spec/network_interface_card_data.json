@@ -1,0 +1,9 @@
+{
+  "id" : "/subscriptions/########-####-####-####-############/resourceGroups/#{resource_group_name}/providers/Microsoft.Network/networkInterfaces/#{name}",
+  "name" : "name",
+  "type" : "Microsoft.Network/networkInterfaces",
+  "location" : "location",
+  "enableIPForwarding" : false,
+  "resourceGuid" : "2bff0fad-623b-4773-82b8-dc875f3aacd2",
+  "provisioningState" : "Succeeded"
+}

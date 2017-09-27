@@ -1,4 +1,4 @@
-name             'Azure_lb'
+name             'azure_lb'
 description      'Azure Load Balancer'
 version          '0.1.0'
 maintainer       'OneOps'

@@ -15,7 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 include_recipe "keypair::setup"
 
 case node[:provider_class]
@@ -23,7 +22,7 @@ when /vagrant|lxd|aliyun/
   Chef::Log.info("keypair add not implemented for provider")
 when /azure/
     include_recipe "azurekeypair::add"
-    if node.workorder.rfcCi.rfcAction == "update" || node.workorder.rfcCi.rfcAction == "replace"
+    if node[:workorder][:rfcCi][:rfcAction] == "update" || node[:workorder][:rfcCi][:rfcAction] == "replace"
       include_recipe "keypair::update_authorized_keys"
     end
 when /vsphere/
@@ -35,8 +34,8 @@ end
 
 ruby_block 'setup security groups' do
   block do
-    puts "***RESULTJSON:private="+JSON.generate({"value" => node.keypair.private})
-    puts "***RESULTJSON:public="+JSON.generate({"value" => node.keypair.public})
-    puts "***RESULT:key_name=#{node.kp_name}"
+    puts "***RESULTJSON:private="+JSON.generate({"value" => node['keypair']['private']})
+    puts "***RESULTJSON:public="+JSON.generate({"value" => node['keypair']['public']})
+    puts "***RESULT:key_name=#{node['kp_name']}"
   end
 end

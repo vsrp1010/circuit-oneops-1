@@ -1,0 +1,6 @@
+{
+  "id" : "/subscriptions/########-####-####-####-############/resourceGroups/fog-rg/providers/Microsoft.Network/virtualNetworks/fog-vnet",
+  "name" : "fog-vnet",
+  "type" : "Microsoft.Network/virtualNetworks",
+  "location" : "westus"
+}

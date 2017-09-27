@@ -1,132 +1,111 @@
 # rubocop:disable LineLength
-require File.expand_path('../../libraries/record_set.rb', __FILE__)
+
 require 'json'
 require 'rest-client'
+
+require 'simplecov'
+SimpleCov.start
+
+require File.expand_path('../../libraries/record_set.rb', __FILE__)
+require ::File.expand_path('../../../azure_base/libraries/logger', __FILE__)
 
 describe AzureDns::RecordSet do
   before do
     platform_resource_group = 'azure_resource_group'
-    token = '<DUMMY_TOKEN>'
     dns_attributes = {
-      'tenant_id' => '<TENANT_ID>',
-      'client_id' => '<CLIENT_ID>',
-      'client_secret' => '<CLIENT_SECRET>',
-      'subscription' => '<SUBSCRIPTION_ID>',
-      'zone' => '<COM>' }
-    @record_sets = AzureDns::RecordSet.new(dns_attributes,
-                                           token, platform_resource_group)
+      'tenant_id': '<TENANT_ID>',
+      'client_id': '<CLIENT_ID>',
+      'client_secret': '<CLIENT_SECRET>',
+      'subscription': '<SUBSCRIPTION_ID>',
+      'zone': '<ZONE-NAME>'
+    }
+    @record_set = AzureDns::RecordSet.new(platform_resource_group, dns_attributes)
   end
 
+  #
+  # Testing Get Records on RecordSet
+  #
+
   describe '#get_existing_records_for_recordset' do
-    it 'returns A type record for recordset' do
+    it 'returns A type or CNAME record for recordset' do
       file_path = File.expand_path('A_type_record_data.json', __dir__)
       file = File.open(file_path)
       dns_response = file.read
-      allow(RestClient).to receive(:get) { dns_response }
-      records = ['1.2.3.4']
-      expect @record_sets.get_existing_records_for_recordset('A', 'RS_Name')
-        .equal?(records)
-    end
-  end
 
-  describe '#get_existing_records_for_recordset' do
-    it 'returns CNAME type record for recordset' do
-      file_path = File.expand_path('CNAME_type_record_data.json', __dir__)
-      file = File.open(file_path)
-      dns_response = file.read
-      allow(RestClient).to receive(:get) { dns_response }
-      records = ['contoso.com']
-      expect @record_sets.get_existing_records_for_recordset('CNAME', 'RS_Name')
-        .equal?(records)
+      allow(@record_set.dns_client).to receive_message_chain(:record_sets, :get).and_return(dns_response)
+      expect(@record_set.get_existing_records_for_recordset('A', 'RS_Name')).to_not eq(nil)
     end
-  end
 
-  describe '#get_existing_records_for_recordset' do
-    it 'raises JSON parsing error' do
-      allow(RestClient).to receive(:get) {}
-      allow(JSON).to receive(:parse) {}
-      expect { @record_sets.get_existing_records_for_recordset('CNAME', 'RS') }
-        .to raise_error('no backtrace')
+    it 'raises AzureOperationError exception' do
+      allow(@record_set.dns_client).to receive_message_chain(:record_sets, :get)
+                                           .and_raise(MsRestAzure::AzureOperationError.new('Errors'))
+      expect { @record_set.get_existing_records_for_recordset('A', 'RS_Name') }.to raise_error('no backtrace')
     end
-  end
 
-  describe '#get_existing_records_for_recordset' do
     it 'raises an exception' do
-      allow(RestClient).to receive(:get)
-        .and_raise(RestClient::Exception.new(nil))
-      expect { @record_sets.get_existing_records_for_recordset('A', 'RS_Name') }
-        .to raise_error('no backtrace')
+      allow(@record_set.dns_client).to receive_message_chain(:record_sets, :get)
+                                           .and_raise(MsRest::HttpOperationError.new('Error'))
+      expect { @record_set.get_existing_records_for_recordset('A', 'RS_Name')}.to raise_error('no backtrace')
     end
+
   end
 
-  describe '#get_existing_records_for_recordset' do
-    it 'raises an exception with http_code 404' do
-      allow(RestClient).to receive(:get)
-        .and_raise(RestClient::Exception.new(nil, 404))
-      expect { @record_sets.get_existing_records_for_recordset('A', 'RS_Name') }
-        .to_not raise_error('no backtrace')
-    end
-  end
+  #
+  # Testing Set Records on RecordSet
+  #
 
-  describe '#set_records_on_record_set' do
+  describe '#Testing set_records_on_record_set functionality' do
     it 'sets A type records on recordset' do
-      response = double
-      allow(response).to receive(:code) { 200 }
-      allow(RestClient).to receive(:put) { response }
-      records = ['1.2.3.4', '1.2.3.5']
-      expect { @record_sets.set_records_on_record_set('RS_Name', records, 'A', 300) }
-        .to_not raise_error('no backtrace')
-    end
-  end
-
-  describe '#set_records_on_record_set' do
-    it 'sets CNAME type record on recordset' do
-      response = double
-      allow(response).to receive(:code) { 200 }
-      allow(RestClient).to receive(:put) { response }
+      file_path = File.expand_path('record_set_data.json', __dir__)
+      file = File.open(file_path)
+      record_set_response = file.read
       records = ['contoso.com']
 
-      expect { @record_sets.set_records_on_record_set('RS', records, 'CNAME', 300) }
-        .to_not raise_error('no backtrace')
+      allow(@record_set.dns_client).to receive_message_chain(:record_sets, :create).and_return(record_set_response)
+      expect(@record_set.set_records_on_record_set('RS_Name', records, 'A', 300)).to_not eq(nil)
     end
-  end
 
-  describe '#set_records_on_record_set' do
+    it 'raises AzureOperationError exception' do
+      records = ['contoso.com']
+      allow(@record_set.dns_client).to receive_message_chain(:record_sets, :create)
+                                     .and_raise(MsRestAzure::AzureOperationError.new('Errors'))
+      expect { @record_set.set_records_on_record_set('RS', records, 'CNAME', 300) }.to raise_error('no backtrace')
+
+    end
+
     it 'raises an exception' do
-      allow(RestClient).to receive(:put)
-        .and_raise(RestClient::Exception.new(nil))
-      records = ['1.2.3.4', '1.2.3.5']
-      expect { @record_sets.set_records_on_record_set('RS_Name', records, 'A', 300) }
-        .to raise_error('no backtrace')
+      records = ['contoso.com']
+      allow(@record_set.dns_client).to receive_message_chain(:record_sets, :create)
+                                     .and_raise(MsRest::HttpOperationError.new('Error'))
+      expect { @record_set.set_records_on_record_set('RS', records, 'CNAME', 300) }.to raise_error('no backtrace')
     end
   end
 
-  describe '#remove_record_set' do
+
+  #
+  # Testing Remove RecordSet
+  #
+
+  describe '# It tests remove_record_set functionality' do
     it 'removes recordset' do
-      response = double
-      allow(response).to receive(:code) { 200 }
-      allow(RestClient).to receive(:delete) { response }
+      allow(@record_set.dns_client).to receive_message_chain(:record_sets, :get, :destroy).and_return(true)
+      delete_rs = @record_set.remove_record_set('Recordset_Name', 'A')
 
-      expect { @record_sets.remove_record_set('Recordset_Name', 'A') }
-        .to_not raise_error('no backtrace')
+      expect(delete_rs).to_not eq(false)
     end
-  end
 
-  describe '#remove_record_set' do
+    it 'raises AzureOperationError exception' do
+      allow(@record_set.dns_client).to receive_message_chain(:record_sets, :get, :destroy)
+                                                 .and_raise(MsRestAzure::AzureOperationError.new('Errors'))
+
+      expect { @record_set.remove_record_set('Recordset_Name', 'A') }.to raise_error('no backtrace')
+    end
+
     it 'raises an exception' do
-      allow(RestClient).to receive(:delete)
-        .and_raise(RestClient::Exception.new(nil))
-      expect { @record_sets.remove_record_set('Recordset_Name', 'A') }
-        .to raise_error('no backtrace')
-    end
-  end
+      allow(@record_set.dns_client).to receive_message_chain(:record_sets, :get, :destroy)
+                                                 .and_raise(MsRest::HttpOperationError.new('Error'))
 
-  describe '#remove_record_set' do
-    it 'raises an exception with http code 404' do
-      allow(RestClient).to receive(:delete)
-        .and_raise(RestClient::Exception.new(nil, 404))
-      expect { @record_sets.remove_record_set('Recordset_Name', 'A') }
-        .to_not raise_error('no backtrace')
+      expect { @record_set.remove_record_set('Recordset_Name', 'A') }.to raise_error('no backtrace')
     end
   end
 end

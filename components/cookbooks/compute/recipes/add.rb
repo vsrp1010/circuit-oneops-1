@@ -46,7 +46,7 @@ ruby_block "duration" do
 end
 
 # clear ptr on replace
-if node.workorder.rfcCi.has_key?(:ciState) && node.workorder.rfcCi.ciState == "replace"
+if node[:workorder][:rfcCi].has_key?(:ciState) && node[:workorder][:rfcCi][:ciState] == "replace"
   cloud_name = node[:workorder][:cloud][:ciName]
   provider_service = node[:workorder][:services][:dns][cloud_name][:ciClassName].split(".").last.downcase
   provider = "fog"
@@ -72,7 +72,7 @@ elsif provider == "docker"
   sleep_time = 1
 end
 
-Chef::Log.info("Action is: #{node.workorder.rfcCi.rfcAction}") 
+Chef::Log.info("Action is: #{node[:workorder][:rfcCi][:rfcAction]}")
 
 ruby_block "wait for boot" do
   block do

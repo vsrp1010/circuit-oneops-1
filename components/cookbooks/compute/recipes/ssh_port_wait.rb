@@ -20,7 +20,7 @@ retry_count = 0
 ruby_block 'ssh port wait' do
   block do
 
-    if node.ip.nil?
+    if node[:ip].nil?
       puts "***FAULT:FATAL=ip missing"
       Chef::Log.error("no ip")
       e = Exception.new("no backtrace")
@@ -29,15 +29,15 @@ ruby_block 'ssh port wait' do
     end
 
    if node.has_key?('max_retry_count_add')
-      max_retry_count = node.max_retry_count_add
+      max_retry_count = node[:max_retry_count_add]
     else
       max_retry_count = 10
     end
 
-    ip = node.ip
+    ip = node[:ip]
     port = 22
-    if node.ip.include?(":")
-      parts = node.ip.split(":")
+    if node[:ip].include?(":")
+      parts = node[:ip].split(":")
       ip = parts.first
       port = parts.last
     end

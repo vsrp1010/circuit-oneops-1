@@ -27,38 +27,38 @@ end
 ruby_block 'repair node' do
   block do
   
-  if node.workorder["payLoad"].has_key?("Environment") &&
-     node.workorder.payLoad.Environment[0][:ciAttributes].has_key?("monitoring") &&
-     node.workorder.payLoad.Environment[0][:ciAttributes][:monitoring] == "false"
+  if node[:workorder]["payLoad"].has_key?("Environment") &&
+     node[:workorder][:payLoad][:Environment][0][:ciAttributes].has_key?("monitoring") &&
+     node[:workorder][:payLoad][:Environment][0][:ciAttributes][:monitoring] == "false"
     
     monitoring_enabled = false
   end  
   
-  if node.ssh_port_closed == true
+  if node[:ssh_port_closed] == true
     
     #Computes belonging to certain platforms(couchbase) should not be rebooted. 
     #this is a temp hack to have list of packs listed here to avoid hard reboots. 
     #Note : Powercycle action can not be performed from gui if platform is in 
     #patforms_to_exclude list.
     patforms_to_exclude=%W[couchbase]  
-    pack = node.workorder.box[:ciAttributes][:pack]    
+    pack = node[:workorder][:box][:ciAttributes][:pack]
     
     if patforms_to_exclude.include? pack
       Chef::Log.info("skipping because #{pack} in platforms to exclude #{patforms_to_exclude}")
       puts "***TAG:repair=skiphardrebootplatformexcluded"    
     else
-      Chef::Log.info("ssh on #{node.ip} down - rebooting")
+      Chef::Log.info("ssh on #{node[:ip]} down - rebooting")
       puts "***TAG:repair=reboot"
       run_context.include_recipe("compute::reboot")
     end
         
   else
     if monitoring_enabled
-      Chef::Log.info("ssh on #{node.ip} up - repairing agent and nagios")    
+      Chef::Log.info("ssh on #{node[:ip]} up - repairing agent and nagios")
       puts "***TAG:repair=agentrestart"
       run_context.include_recipe("compute::repair_agent")
     else
-      Chef::Log.info("ssh on #{node.ip} up - not repairing perf-agent because environment.monitoring=false")        
+      Chef::Log.info("ssh on #{node[:ip]} up - not repairing perf-agent because environment.monitoring=false")
       puts "***TAG:repair=norepairmonitoringdisabled"  
     end
   end

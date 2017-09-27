@@ -24,7 +24,7 @@ module AzureCompute
       OOLog.info("Initial User is: #{os_profile.admin_username}")
       os_profile.linux_configuration = linux_config
 
-      return os_profile
+      os_profile
     end
     def windows_build_profile(initial_user, pub_key, server_name)
       win_config = Azure::ARM::Compute::Models::WindowsConfiguration.new

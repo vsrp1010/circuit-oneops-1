@@ -1,0 +1,187 @@
+{
+  "server_name": "Test-server",
+  "platform-resource-group": "Test-RG",
+  "image_id": "OpenLogic:CentOS:7.0:latest",
+  "platform": "Centos-7.0",
+  "size_id": "Standard_A1",
+  "ip_type": "public",
+  "workorder": {
+    "cloud": {
+      "ciName": "Azure"
+    },
+    "services": {
+      "compute": {
+        "Azure": {
+          "nsId": 125871,
+          "ciAttributes": {
+            "tenant_id": "<Tenant ID>",
+            "imagemap": "{\r\n      \"centos-7.0\":\"OpenLogic:CentOS:7.0:latest\",\r\n      \"ubuntu-14.04\":\"canonical:ubuntuserver:14.04.3-LTS:14.04.201508050\"\r\n    }",
+            "subscription": "<Subscription ID>",
+            "ostype": "centos-7.0",
+            "repo_map": "{\r\n      \"centos-7.0\":\"sudo yum clean all; sudo yum -d0 -e0 -y install rsync yum-utils; sudo yum -d0 -e0 -y install epel-release; sudo yum -d0 -e0 -y install gcc-c++\",\r\n      \"ubuntu-14.04\":\"\"\r\n}",
+            "client_id": "<Client ID>",
+            "network": "",
+            "env_vars": "{ \"rubygems\":\"https://rubygems.org/\"}",
+            "express_route_enabled": "false",
+            "resource_group": "",
+            "dns_ip": "8.8.8.8",
+            "network_address": "10.0.0.0/16",
+            "location": "eastus",
+            "client_secret": "<Client Secret>",
+            "sizemap": "{ \"XS\":\"Standard_A0\",\"S\":\"Standard_A1\",\"M\":\"Standard_A2\",\"L\":\"Standard_A3\",\"XL\":\"Standard_A4\",\"XXL\":\"Standard_A5\",\"3XL\":\"Standard_A6\",\"4XL\":\"Standard_A7\",\"S-CPU\":\"Standard_D1\",\"M-CPU\":\"Standard_D2\",\"L-CPU\":\"Standard_D3\",\"XL-CPU\":\"Standard_D4\",\"8XL-CPU\":\"Standard_D11\",\"9XL-CPU\":\"Standard_D12\",\"10XL-CPU\":\"Standard_D13\",\"11XL-CPU\":\"Standard_D14\",\"S-MEM\":\"Standard_DS1\",\"M-MEM\":\"Standard_DS2\",\"L-MEM\":\"Standard_DS3\",\"XL-MEM\":\"Standard_DS4\",\"8XL-MEM\":\"Standard_DS11\",\"9XL-MEM\":\"Standard_DS12\",\"10XL-MEM\":\"Standard_DS13\",\"11XL-MEM\":\"Standard_DS14\"}",
+            "subnet_address": "10.0.0.0/24",
+            "initial_user": "azure"
+          },
+          "attrProps": {
+            "IS_SECURED": {
+              "client_secret": "true"
+            }
+          },
+          "ciId": 125872,
+          "ciName": "azure-eastus",
+          "ciClassName": "cloud.service.oneops.1.Azure",
+          "impl": "oo::chef-11.18.12",
+          "nsPath": "/Confiz/_clouds/Azure",
+          "ciGoid": "125871-1744-125872",
+          "comments": "",
+          "ciState": "default",
+          "lastAppliedRfcId": 0,
+          "createdBy": "samawia",
+          "updatedBy": "samawia",
+          "created": "Dec 20, 2016 9:53:31 AM",
+          "updated": "Jan 23, 2017 7:18:20 AM"
+        }
+      }
+    },
+    "payLoad": {
+      "SecuredBy": [
+        {
+          "ciAttributes": {
+            "key_name": "oneops_key.145759.env-lb23.145826",
+            "private": "-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEAvHIDYXV3XeAXyStWPII6tOeRwTczQ3en2oXnvgQNvWYdWfWs\nvE9jOgoMChZgXLD6WaGdKArXiPvOR5ymYDQx4Qam975ApaiCZ5Eg3fKmVGnFkHyl\nAY9fpmfvTsR6saWw8x+SE4gMINzXaRK/iYxvORXie0KOl0n1HM9YEGNIJvQ/LeK1\nBroIhDkrleVR/ggYJ2ovShyR4b7Lb6xlpLTiQk7/iqaWMbkxpCHZYI4muhy3JEHO\nO/qxr/Iqf3vpEALcaBthfkrvB8iHOGBPbnOA3YBNpQllWzp9wyWhZjSOm7eHEU8q\nJdVcx582SDP8CRqLs8s0tw3I+1btqydFe0mErQIDAQABAoIBAGqhqUAQlAbOsybm\nGtoKZuXO0y8d6SgYIScJ9mQTLyMpERrCZYf49BD3dnCO0OAiVMc7KA5sdCHTOppT\nDeIKJt9KQFiXk0Up4QBxosN0dqH1aBGmNkh3tIwY69UKYNL9Cu/HwYTDyvkdfda7\nAR74FEedFpbgxobdFpHC0fYT99PyEM7tyOcra2v82rWoMWAFiOS5TP4Lvhvdg3on\nCDkegm0TyJConDhICJmkDQFvkNVpT5hZzfHaI1CM3uEflYs3gAN8F5B3W61MBk44\nSw/1IF36BZjY/+ve6/FKeBvlrEcsQIUjT76cRWEzDTWpxyAUQsr9n35+cMPtLDIX\n4KFEvAECgYEA4mJPPwGkGNus9MQlAE5jmyDySz6ZwSX5xVkeVtQYcOsn6kVSj64U\n9xjreIWtP0YquVZLHA0B8Ok1KHBMO8BvQNq3ftHE6wEJWxRY2r573xUO68FxNnXW\nGKETNukNpfo3UVmFn5Z6JcMB0TwZCrizZ/rAXOfADpwtmIkf3Wlt+O0CgYEA1Rkf\nfNVsZvNZcV6AkT/ti8haAG+FKVGSm2TSBk8dbRdEwXZcW8bnrl5kXQGru8MuA94w\nwBM/aBerstn8kxY3m0FtFk5tBmWEP8IRYzv2vwDzP8t4bEYSvqcmXtjz7xYiaR+r\nIh1JdbeLQ5NOL9g8Q60cVR3gd/I3AAjmjk5LAsECgYBywUzUbnuFUk3hIVB0UEgz\nicbol4oPG7X58MvtTcQ58SohmhRY2vCrtQkf5ftFOMdNfc3DIWDbgwu8PPiXzVtX\n78bWVXVRfwwEDFNiRu65zY3rufoulhr6DySTUB3oBedmqE+Q7xFp9OkF7EXxZmEj\nEzvRnHSBs291hAUQEnJ5nQKBgHZov1ZeQR3zmn+kQ0xyeUxyx4/2Z8fNy+kM3Kck\nzvUPOOVHH4rfu1zollwX0ZVDnw4HKI+SIml0vbNj7TTN45ghgrwiV/J19kZ3T7IU\nX8dCf+ey5/dB+Kh3uJp7cxAm/HftYOpT273Nf1TNRWTQgqwYROYG8/OyY11hlLr+\nRjABAoGBANqzxaSjNFApwqT7BegNsqRO9ErH1BrnfxVtccKcrRNwc+yoV8U5Ghxq\nYZWaxRCx9Q+vPoHQDMVCPuizYn0t/pYTp6bo5A2Jpkbl15FTLZEdqnwievmeD20W\nLcFIc+Bx5xvlAMHASnQSBVzxveW4PG+0MdhO1NCNwjLiUPMJ1l/i\n-----END RSA PRIVATE KEY-----\n",
+            "public": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC8cgNhdXdd4BfJK1Y8gjq055HBNzNDd6fahee+BA29Zh1Z9ay8T2M6CgwKFmBcsPpZoZ0oCteI+85HnKZgNDHhBqb3vkClqIJnkSDd8qZUacWQfKUBj1+mZ+9OxHqxpbDzH5ITiAwg3NdpEr+JjG85FeJ7Qo6XSfUcz1gQY0gm9D8t4rUGugiEOSuV5VH+CBgnai9KHJHhvstvrGWktOJCTv+KppYxuTGkIdlgjia6HLckQc47+rGv8ip/e+kQAtxoG2F+Su8HyIc4YE9uc4DdgE2lCWVbOn3DJaFmNI6bt4cRTyol1VzHnzZIM/wJGouzyzS3Dcj7Vu2rJ0V7SYSt\n"
+          },
+          "ciBaseAttributes": {},
+          "ciAttrProps": {
+            "IS_SECURED": {
+              "private": "true"
+            }
+          },
+          "rfcId": 23196,
+          "releaseId": 23188,
+          "ciId": 146209,
+          "nsPath": "/Confiz/asm/env-lb23/bom/plt-lb/1",
+          "ciClassName": "bom.oneops.1.Keypair",
+          "impl": "oo::chef-11.18.12",
+          "ciName": "sshkeys-125866-1",
+          "ciGoid": "146205-3216-146209",
+          "ciState": "default",
+          "rfcAction": "add",
+          "createdBy": "samawia",
+          "updatedBy": "samawia:controller",
+          "rfcCreatedBy": "samawia",
+          "execOrder": 1,
+          "lastAppliedRfcId": 23196,
+          "isActiveInRelease": true,
+          "rfcCreated": "Jan 26, 2017 11:01:57 AM",
+          "rfcUpdated": "Jan 26, 2017 11:01:57 AM",
+          "created": "Jan 26, 2017 11:02:50 AM",
+          "updated": "Jan 26, 2017 11:02:50 AM"
+        }
+      ],
+      "DependsOn": [
+        {
+          "ciAttributes": {
+            "inbound": "[ \"22 22 tcp 0.0.0.0/0\", \"80 80 tcp 0.0.0.0/0\" ]"
+          },
+          "ciBaseAttributes": {
+            "inbound": "[ \"22 22 tcp 0.0.0.0/0\", \"80 80 tcp 0.0.0.0/0\" ]"
+          },
+          "ciAttrProps": {},
+          "rfcId": 23189,
+          "releaseId": 23188,
+          "ciId": 146206,
+          "nsPath": "/Confiz/asm/env-lb23/bom/plt-lb/1",
+          "ciClassName": "bom.oneops.1.Secgroup",
+          "impl": "oo::chef-11.18.12",
+          "ciName": "secgroup-125866-1",
+          "ciGoid": "146205-4321-146206",
+          "ciState": "default",
+          "rfcAction": "add",
+          "createdBy": "samawia",
+          "updatedBy": "samawia:controller",
+          "rfcCreatedBy": "samawia",
+          "execOrder": 2,
+          "lastAppliedRfcId": 23189,
+          "isActiveInRelease": true,
+          "rfcCreated": "Jan 26, 2017 11:01:57 AM",
+          "rfcUpdated": "Jan 26, 2017 11:01:57 AM",
+          "created": "Jan 26, 2017 11:18:38 AM",
+          "updated": "Jan 26, 2017 11:18:38 AM"
+        }
+      ]
+    },
+    "box": {
+      "nsId": 145785,
+      "ciAttributes": {
+        "replace_after_repairs": "3",
+        "is_active": "true",
+        "pack_digest": "5c8e5410c00c4182055e8745d7d439d2",
+        "description": "",
+        "replace_after_minutes": "60",
+        "availability": "single",
+        "source": "oneops",
+        "autoscale": "false",
+        "is_platform_enabled": "true",
+        "version": "1",
+        "pack": "customlb",
+        "major_version": "1",
+        "autorepair_exponential_backoff": "true",
+        "autoreplace": "true",
+        "autorepair": "true",
+        "autocomply": "false"
+      },
+      "attrProps": {},
+      "ciId": 145826,
+      "ciName": "plt-lb",
+      "ciClassName": "manifest.Platform",
+      "impl": "oo::chef-11.4.0",
+      "nsPath": "/Confiz/asm/env-lb23/manifest/plt-lb/1",
+      "ciGoid": "145785-1113-145826",
+      "comments": "",
+      "ciState": "default",
+      "lastAppliedRfcId": 22984,
+      "createdBy": "samawia",
+      "created": "Jan 26, 2017 11:01:57 AM",
+      "updated": "Jan 26, 2017 11:01:57 AM"
+    },
+    "rfcCi": {
+      "ciAttributes": {
+        "metadata": "{}",
+        "size": "S",
+        "require_public_ip": "false",
+        "ports": "{}",
+        "tags": "{}"
+      },
+      "ciBaseAttributes": {},
+      "ciAttrProps": {},
+      "rfcId": 23202,
+      "releaseId": 23188,
+      "ciId": 146212,
+      "nsPath": "/Confiz/asm/env-lb23/bom/plt-lb/1",
+      "ciClassName": "bom.oneops.1.Compute",
+      "impl": "oo::chef-11.18.12",
+      "ciName": "compute-125866-1",
+      "ciGoid": "146205-2127-146212",
+      "rfcAction": "add",
+      "createdBy": "samawia",
+      "rfcCreatedBy": "samawia",
+      "execOrder": 3,
+      "isActiveInRelease": true,
+      "rfcCreated": "Jan 26, 2017 11:01:57 AM",
+      "rfcUpdated": "Jan 26, 2017 11:01:57 AM",
+      "created": "Jan 26, 2017 11:01:57 AM",
+      "updated": "Jan 26, 2017 11:01:57 AM"
+    }
+  }
+}

@@ -43,42 +43,46 @@ Chef::Log.info("using security_group:"+security_group)
 
 
 case cloud_service[:ciClassName].split(".").last.downcase
-when /azure_lb/
+  when /azure_lb/
 
     include_recipe "azure_lb::delete"
 
-when /f5-bigip/
+  when /azuregateway/
 
-   include_recipe "f5-bigip::f5_delete_lbvserver"
-   include_recipe "f5-bigip::f5_delete_pool"
-   include_recipe "f5-bigip::f5_delete_monitor"
-   include_recipe "f5-bigip::f5_delete_node"
+    include_recipe "azuregateway::delete"
 
-when /netscaler/
+  when /f5-bigip/
 
-  n = netscaler_connection "conn" do
-    action :nothing
-  end
-  n.run_action(:create)
+    include_recipe "f5-bigip::f5_delete_lbvserver"
+    include_recipe "f5-bigip::f5_delete_pool"
+    include_recipe "f5-bigip::f5_delete_monitor"
+    include_recipe "f5-bigip::f5_delete_node"
 
-  include_recipe "netscaler::delete_lbvserver"
-  include_recipe "netscaler::delete_servicegroup"
-  include_recipe "netscaler::delete_server"
-  include_recipe "netscaler::logout"
+  when /netscaler/
 
-when /rackspace/
+    n = netscaler_connection "conn" do
+      action :nothing
+    end
+    n.run_action(:create)
 
-  include_recipe "rackspace::delete_lb"
+    include_recipe "netscaler::delete_lbvserver"
+    include_recipe "netscaler::delete_servicegroup"
+    include_recipe "netscaler::delete_server"
+    include_recipe "netscaler::logout"
 
-when /elb/
+  when /rackspace/
 
-  include_recipe "elb::delete_lb"
+    include_recipe "rackspace::delete_lb"
 
-when /haproxy/
+  when /elb/
 
-  include_recipe "haproxy::delete_lb"
+    include_recipe "elb::delete_lb"
 
-when /octavia/
+  when /haproxy/
 
-  include_recipe "octavia::delete_lb"
+    include_recipe "haproxy::delete_lb"
+
+  when /octavia/
+
+    include_recipe "octavia::delete_lb"
 end

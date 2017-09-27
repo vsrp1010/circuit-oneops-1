@@ -1,39 +1,128 @@
+require 'fog/azurerm'
+require 'chef'
+
 module AzureCompute
   class StorageProfile
 
     attr_accessor :location,
-                  :resource_group_name
+                  :resource_group_name,
+                  :size_id,
+                  :ci_id,
+                  :server_name
 
-    attr_reader :creds, :subscription
-
-    def initialize(creds, subscription)
-      @creds = creds
-      @subscription = subscription
+    def initialize(creds)
       @storage_client =
-        Azure::ARM::Storage::StorageManagementClient.new(creds)
-      @storage_client.subscription_id = subscription
+          Fog::Storage::AzureRM.new(creds)
 
       @compute_client =
-        Azure::ARM::Compute::ComputeManagementClient.new(creds)
-      @compute_client.subscription_id = subscription
+          Fog::Compute::AzureRM.new(creds)
+    end
+
+    def get_managed_osdisk_name
+      #this is to get the OS managed disk name
+
+      begin
+
+        managed_osdiskname = @server_name.to_s + "managedos" + Utils.abbreviate_location(@location)
+        managed_osdiskname
+
+      rescue => e
+        OOLog.fatal("Error setting up managed os disk name: #{managed_osdiskname}: #{e.message}")
+      end
 
     end
 
-    def build_profile(node)
-      #==================================================
-      #Get the information from the workload in order to
-      #extract the platform name and generate
-      #the storage account name
-      workorder = node["workorder"]["rfcCi"]
-      nsPathParts = workorder["nsPath"].split("/")
-      org = nsPathParts[1]
-      assembly = nsPathParts[2]
-      platform = nsPathParts[5]
+    def get_managed_osdisk_type
+      #this is to get the Managed disk type based on compute type
 
+      if @size_id =~ /(.*)GS(.*)|(.*)DS(.*)/
+        sku_name = "Premium_LRS"
+      else
+        sku_name = "Standard_LRS"
+      end
+
+      OOLog.info("VM size: #{@size_id}")
+      OOLog.info("Storage Type: #{sku_name}")
+      sku_name
+    end
+
+    def delete_managed_osdisk(resource_group_name, managed_diskname)
+      # this is to delete managed OS disk
+
+      OOLog.info("Deleting OS Managed Disk '#{managed_diskname}' in '#{resource_group_name}' ")
+
+      begin
+        OOLog.info("Deleting OS Managed Disk '#{managed_diskname}' in '#{resource_group_name}' ")
+        start_time = Time.now.to_i
+
+        os_managed_disk = @compute_client.managed_disks.get(resource_group_name, managed_diskname)
+        os_managed_disk.destroy
+        end_time = Time.now.to_i
+        duration = end_time - start_time
+
+      rescue MsRestAzure::AzureOperationError => e
+        OOLog.fatal("Error deleting Managed Disk '#{managed_diskname}' in ResourceGroup '#{resource_group_name}'. Exception: #{e.body}")
+      rescue => e
+        OOLog.fatal("Error deleting Managed Disk  '#{managed_diskname}' in ResourceGroup '#{resource_group_name}'. Exception: #{e.message}")
+      end
+      OOLog.info(" Deleting OS Managed disk operation took #{duration} seconds")
+    end
+=begin
+    def get_storage_account_name
+      # create storage account if needed
+      begin
+        storage_account_name = create_storage_account_name()
+        create_storage_account(storage_account_name)
+        wait_for_storage_account(storage_account_name)
+        storage_account_name
+      rescue => e
+        OOLog.fatal("Error creating storage account: #{storage_account_name}: #{e.message}")
+      end
+    end
+
+    private
+
+    def create_storage_account(storage_account_name)
+      if storage_name_avail?(storage_account_name)
+        replication = "LRS"
+        if @size_id =~ /(.*)GS(.*)|(.*)DS(.*)/
+          sku_name = "Premium"
+        else
+          sku_name = "Standard"
+        end
+
+        OOLog.info("VM size: #{@size_id}")
+        OOLog.info("Storage Type: #{sku_name}_#{replication}")
+
+        storage_account =
+            @storage_client.storage_accounts.create({ name: storage_account_name,
+                                                      resource_group: @resource_group_name,
+                                                      location: @location,
+                                                      sku_name: sku_name,
+                                                      replication: replication })
+        if storage_account.nil?
+          OOLog.fatal("***FAULT:FATAL=Could not create storage account #{storage_account_name}")
+        end
+      end
+    end
+
+    def wait_for_storage_account(storage_account_name)
+      i = 0
+      until storage_account_created?(storage_account_name) do
+        if(i >= 10)
+          OOLog.fatal("***FAULT:FATAL=Timeout. Could not find storage account #{storage_account_name}")
+        end
+        i += 1
+        sleep 30
+      end
+    end
+
+
+    def create_storage_account_name()
       # Azure storage accout name restrinctions:
       # alpha-numberic  no special characters between 9 and 24 characters
       # name needs to be globally unique, but it also needs to be per region.
-      generated_name = "oostg" + node.workorder.box.ciId.to_s + Utils.abbreviate_location(@location)
+      generated_name = "oostg" + @ci_id.to_s + Utils.abbreviate_location(@location)
 
       # making sure we are not over the limit
       if generated_name.length > 22
@@ -52,87 +141,8 @@ module AzureCompute
         OOLog.fatal("No storage account can be selected!")
       end
 
-      storage_account_name = storage_accounts[storage_index]
-
-      #Check for Storage account availability
-      # (if storage account is created or not)
-      #Available means the storage account has not been created
-      # (need to create it)
-      #Otherwise, it is created and we can use it
-      if storage_name_avail?(storage_account_name)
-        #Storage account name is available; Need to create storage account
-        #Select the storage according to VM size
-        if node[:size_id] =~ /(.*)GS(.*)|(.*)DS(.*)/
-          account_type = Azure::ARM::Storage::Models::AccountType::PremiumLRS
-        else
-          account_type = Azure::ARM::Storage::Models::AccountType::StandardLRS
-        end
-
-        OOLog.info("VM size: #{node[:size_id]}")
-        OOLog.info("Storage Type: #{account_type}")
-
-        storage_account =
-          create_storage_account(storage_account_name, account_type)
-        if storage_account.nil?
-          OOLog.fatal("***FAULT:FATAL=Could not create storage account #{storage_account_name}")
-        end
-      else
-        OOLog.info("No need to create Storage Account: #{storage_account_name}")
-      end
-
-      i = 0
-      until storage_account_created?(storage_account_name) do 
-        if(i >= 10) 
-          OOLog.fatal("***FAULT:FATAL=Timeout. Could not find storage account #{storage_account_name}")
-        end
-        i += 1
-        sleep 30
-      end
-
-      # get the storage account and add the tags
-      storage_account = get_storage_account(storage_account_name)
-      tags = Utils.get_resource_tags(node)
-      Utils.update_resource_tags(@creds, @subscription, @resource_group_name, storage_account, tags)
-        
-      OOLog.info("ImageID: #{node['image_id']}")
-
-      # image_id is expected to be in this format; Publisher:Offer:Sku:Version (ie: OpenLogic:CentOS:6.6:latest)
-      imageID = node['image_id'].split(':')
-
-      # build storage profile to add to the params for the vm
-      storage_profile = Azure::ARM::Compute::Models::StorageProfile.new
-      storage_profile.image_reference = Azure::ARM::Compute::Models::ImageReference.new
-      storage_profile.image_reference.publisher = imageID[0]
-      storage_profile.image_reference.offer = imageID[1]
-      storage_profile.image_reference.sku = imageID[2]
-      storage_profile.image_reference.version = imageID[3]
-      OOLog.info("Image Publisher is: #{storage_profile.image_reference.publisher}")
-      OOLog.info("Image Sku is: #{storage_profile.image_reference.sku}")
-      OOLog.info("Image Offer is: #{storage_profile.image_reference.offer}")
-      OOLog.info("Image Version is: #{storage_profile.image_reference.version}")
-
-      image_version_ref = storage_profile.image_reference.offer+"-"+(storage_profile.image_reference.version).to_s
-      msg = "***RESULT:Server_Image_Name=#{image_version_ref}"
-      OOLog.info(msg)
-
-      server_name = node['server_name']
-      OOLog.info("Server Name: #{server_name}")
-
-      storage_profile.os_disk = Azure::ARM::Compute::Models::OSDisk.new
-      storage_profile.os_disk.name = "#{server_name}-disk"
-      OOLog.info("Disk Name is: '#{storage_profile.os_disk.name}' ")
-
-      storage_profile.os_disk.vhd = Azure::ARM::Compute::Models::VirtualHardDisk.new
-      storage_profile.os_disk.vhd.uri = "https://#{storage_account_name}.blob.core.windows.net/vhds/#{storage_account_name}-#{server_name}.vhd"
-      OOLog.info("VHD URI is: #{storage_profile.os_disk.vhd.uri}")
-      storage_profile.os_disk.caching = Azure::ARM::Compute::Models::CachingTypes::ReadWrite
-      storage_profile.os_disk.create_option = Azure::ARM::Compute::Models::DiskCreateOptionTypes::FromImage
-
-
-      return storage_profile
+      storage_accounts[storage_index]
     end
-
-private
 
     # This function will generate all possible storage account NAMES
     # for current Resource Group.
@@ -154,7 +164,7 @@ private
         storage_accounts[index-1] = account_name
       end
 
-      return storage_accounts
+      storage_accounts
     end
 
     #Calculate the index of the storage account name array
@@ -172,102 +182,48 @@ private
           return storage_index
         end
       end
-      return -1
+      -1
     end
 
     def get_resource_group_vm_count
       vm_count = 0
-      promise = @compute_client.virtual_machines.list(@resource_group_name)
-      result = promise.value!
-      vm_list = result.body.value
+      vm_list = @compute_client.servers(resource_group: @resource_group_name)
       if !vm_list.nil? and !vm_list.empty?
         vm_count = vm_list.size
       else
         vm_count = 0
       end
-      return vm_count
+      vm_count
     end
 
     def storage_name_avail?(storage_account_name)
       begin
-         params = Azure::ARM::Storage::Models::StorageAccountCheckNameAvailabilityParameters.new
-         params.name = storage_account_name
-         params.type = 'Microsoft.Storage/storageAccounts'
-         promise =
-            @storage_client.storage_accounts.check_name_availability(params)
-         response = promise.value!
-         result = response.body
-         OOLog.info("Storage Name Available: #{result.name_available}")
-         return result.name_available
-       rescue  MsRestAzure::AzureOperationError => e
-         OOLog.info("ERROR checking availability of #{storage_account_name}")
-         OOLog.info("ERROR Body: #{e.body}")
-         return nil
-       rescue => ex
-         OOLog.fatal("Error checking availability of #{storage_account_name}: #{ex.message}")
-       end
+        response =
+            @storage_client.storage_accounts.check_name_availability(storage_account_name, 'Microsoft.Storage/storageAccounts')
+        OOLog.info("Storage Name Available: #{response}")
+      rescue  MsRestAzure::AzureOperationError => e
+        OOLog.info("ERROR checking availability of #{storage_account_name}")
+        OOLog.info("ERROR Body: #{e.body}")
+        return nil
+      rescue => ex
+        OOLog.fatal("Error checking availability of #{storage_account_name}: #{ex.message}")
+      end
+      response
     end
 
     def storage_account_created?(storage_account_name)
       begin
-         promise =
-            @storage_client.storage_accounts.get_properties(@resource_group_name, storage_account_name)
-         response = promise.value!
-         result = response.body
-         OOLog.info("Storage Account Provisioning State: #{result.properties.provisioning_state}")
-         return result.properties.provisioning_state == "Succeeded"
-       rescue  MsRestAzure::AzureOperationError => e
-         OOLog.info("#ERROR Body: #{e.body}")
-         return false
-       rescue => ex
-         OOLog.fatal("Error getting properties of #{storage_account_name}: #{ex.message}")
-       end
-    end
-
-    def get_storage_account(storage_account_name)
-      begin
-        promise =
-            @storage_client.storage_accounts.get_properties(@resource_group_name, storage_account_name)
-        response = promise.value!
-        result = response.body
-        return result
+        response =
+            @storage_client.storage_accounts.check_storage_account_exists(@resource_group_name, storage_account_name)
+        OOLog.info("Storage Account Exists: #{response}")
       rescue  MsRestAzure::AzureOperationError => e
         OOLog.info("#ERROR Body: #{e.body}")
         return false
       rescue => ex
         OOLog.fatal("Error getting properties of #{storage_account_name}: #{ex.message}")
       end
+      response
     end
-
-    def create_storage_account(storage_account_name, account_type)
-      # Create a model for new storage account.
-      properties = Azure::ARM::Storage::Models::StorageAccountPropertiesCreateParameters.new
-      properties.account_type = account_type
-
-      params = Azure::ARM::Storage::Models::StorageAccountCreateParameters.new
-      params.properties = properties
-      params.location = @location
-
-      begin
-        Chef::Log.info("Creating Storage Account: [ #{storage_account_name} ] in Resource Group: #{resource_group_name} ...")
-        start_time = Time.now.to_i
-        promise =
-          @storage_client.storage_accounts.create(@resource_group_name,
-                                                  storage_account_name, params)
-        response = promise.value!
-        result = response.body
-        end_time = Time.now.to_i
-
-        duration = end_time - start_time
-        Chef::Log.info("Storage Account created in #{duration} seconds")
-
-        return result
-      rescue MsRestAzure::AzureOperationError => e
-        OOLog.fatal("Error creating storage account: #{e.body.values[0]['message']}")
-      rescue => ex
-        OOLog.fatal("Error creating storage account: #{ex.message}")
-      end
-    end
-
+=end
   end
 end

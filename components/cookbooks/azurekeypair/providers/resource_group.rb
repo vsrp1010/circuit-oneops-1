@@ -3,8 +3,10 @@ def whyrun_supported?
   true
 end
 
+use_inline_resources
+
 action :create do
-  converge_by("Creating Resource Group") do
+  converge_by('Creating Resource Group') do
     rg_manager = AzureBase::ResourceGroupManager.new(@new_resource.node)
     rg_manager.add
   end
@@ -13,7 +15,7 @@ action :create do
 end
 
 action :destroy do
-  converge_by("Destroying Resouce Group") do
+  converge_by('Destroying Resouce Group') do
     rg_manager = AzureBase::ResourceGroupManager.new(@new_resource.node)
     rg_manager.delete
   end

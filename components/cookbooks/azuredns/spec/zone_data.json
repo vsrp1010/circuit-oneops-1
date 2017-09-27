@@ -1,0 +1,13 @@
+{
+  "id": "/subscriptions/########-####-####-####-############/resourceGroups/resource_group/providers/Microsoft.Network/dnszones/name",
+  "name": "name",
+  "type": "Microsoft.Network/dnszones",
+  "etag": "########-####-####-####-############",
+  "location": "global",
+  "tags": [],
+  "maxNumberOfRecordSets" : "5000",
+  "nameServers" :["ns1-05.azure-dns.com.", "ns2-05.azure-dns.net.", "ns3-05.azure-dns.org.", "ns4-05.azure-dns.info."],
+  "numberOfRecordSets" : "2",
+  "parentResourceGroupName" : "resource_group"
+
+}

@@ -3,42 +3,41 @@ require 'json'
 require 'ms_rest'
 
 require ::File.expand_path('../../libraries/public_ip.rb', __FILE__)
+require ::File.expand_path('../../../azure/libraries/public_ip.rb', __FILE__)
+require ::File.expand_path('../../../azure_base/libraries/logger', __FILE__)
+require ::File.expand_path('../../../azure_base/libraries/utils', __FILE__)
 
 describe 'Azuredns::public_ip' do
   file_path = File.expand_path('update_dns_on_pip_data.json', __dir__)
   file = File.open(file_path)
   contents = file.read
   node = JSON.parse(contents)
-
-  public_ip_file_path = File.expand_path('public_ip.json', __dir__)
-  public_ip_file = File.open(public_ip_file_path)
-  public_ip_contents = public_ip_file.read
-  pub_ip = JSON.parse(public_ip_contents)
-
+  credentials = {
+      tenant_id: '<TENANT_ID>',
+      client_secret: '<CLIENT_SECRET>',
+      client_id: '<CLIENT_ID>',
+      subscription_id: '<SUBSCRIPTION>'
+  }
   cloud_name = node['workorder']['cloud']['ciName']
   dns_attributes = node['workorder']['services']['dns'][cloud_name]['ciAttributes']
-  subscription = dns_attributes['subscription']
   resource_group = node['platform-resource-group']
-  tenant_id = dns_attributes['tenant_id']
-  client_id = dns_attributes['client_id']
-  client_secret = dns_attributes['client_secret']
-  credentials = MsRest::TokenCredentials.new(MsRestAzure::ApplicationTokenProvider.new(tenant_id, client_id, client_secret))
   zone_name = dns_attributes['zone'].split('.').reverse.join('.').partition('.').last.split('.').reverse.join('.').tr('.', '-')
 
-  dns_public_ip = AzureDns::PublicIp.new(resource_group,credentials , subscription, zone_name)
+  dns_public_ip = AzureDns::PublicIp.new(resource_group, credentials, zone_name)
 
   describe 'PublicIp::update_dns' do
     it 'returns nil if node.app_name is "os"' do
       node['app_name'] = 'os'
-      allow(dns_public_ip.pubip).to receive(:get) { pub_ip }
-      allow(dns_public_ip.pubip).to receive(:create_update) {}
+      allow(dns_public_ip.pubip).to receive(:get).and_return(Fog::Network::AzureRM::PublicIp.new)
+      allow(dns_public_ip.pubip).to receive(:create_update).and_return(Fog::Network::AzureRM::PublicIp.new)
       expect(dns_public_ip.update_dns(node)).to be_nil
     end
 
     it 'returns nil if node.app_name is "fqdn"' do
       node['app_name'] = 'fqdn'
-      allow(dns_public_ip.pubip).to receive(:get) { pub_ip }
-      allow(dns_public_ip.pubip).to receive(:create_update) {}
+      allow(dns_public_ip.pubip).to receive(:get).and_return(Fog::Network::AzureRM::PublicIp.new)
+      allow(dns_public_ip.pubip).to receive(:create_update).and_return(Fog::Network::AzureRM::PublicIp.new)
+      allow(dns_public_ip).to receive(:update_dns_for_fqdn).and_return('fqdn-response')
       expect(dns_public_ip.update_dns(node)).to be_nil
     end
 
@@ -52,45 +51,46 @@ describe 'Azuredns::public_ip' do
     node['app_name'] = 'os'
     it 'returns nil if node.full_hostname is nil' do
       node['full_hostname'] = nil
-      allow(dns_public_ip.pubip).to receive(:get) { pub_ip }
+      allow(dns_public_ip.pubip).to receive(:get).and_return(Fog::Network::AzureRM::PublicIp.new)
+      allow(dns_public_ip.pubip).to receive(:create_update).and_return(Fog::Network::AzureRM::PublicIp.new)
       expect(dns_public_ip.update_dns_for_os(node)).to be_nil
     end
 
-    it 'returns nil if node.full_hostname is not nil' do
+    it 'returns not nil if node.full_hostname is not nil' do
       node['full_hostname'] = 'test-php-mysql.oneops.com'
-      allow(dns_public_ip.pubip).to receive(:get) { pub_ip }
-      allow(dns_public_ip.pubip).to receive(:create_update) {}
-      expect(dns_public_ip.update_dns_for_os(node)).to be_nil
+      allow(dns_public_ip.pubip).to receive(:get).and_return(Fog::Network::AzureRM::PublicIp.new)
+      allow(dns_public_ip.pubip).to receive_message_chain(:create_update ).and_return(Fog::Network::AzureRM::PublicIp.new)
+      expect(dns_public_ip.update_dns_for_os(node)).not_to be_nil
     end
   end
 
   describe 'PublicIp::update_dns_for_fqdn' do
     node['app_name'] = 'fqdn'
-    it 'returns nil if node.app_name is "fqdn"' do
-      allow(dns_public_ip.pubip).to receive(:get) { pub_ip }
-      allow(dns_public_ip.pubip).to receive(:create_update) {}
-      expect(dns_public_ip.update_dns_for_fqdn(node)).to be_nil
+    it 'returns not nil if node.app_name is "fqdn"' do
+      allow(dns_public_ip.pubip).to receive(:get).and_return(Fog::Network::AzureRM::PublicIp.new)
+      allow(dns_public_ip.pubip).to receive(:create_update).and_return(Fog::Network::AzureRM::PublicIp.new)
+      expect(dns_public_ip.update_dns_for_fqdn(node)).not_to be_nil
     end
 
-    it 'returns nil if aliases are not available' do
+    it 'returns not nil if aliases are not available' do
       node['workorder']['rfcCi']['ciAttributes']['aliases'] = "[]"
-      allow(dns_public_ip.pubip).to receive(:get) { pub_ip }
-      allow(dns_public_ip.pubip).to receive(:create_update) {}
-      expect(dns_public_ip.update_dns_for_fqdn(node)).to be_nil
+      allow(dns_public_ip.pubip).to receive(:get).and_return(Fog::Network::AzureRM::PublicIp.new)
+      allow(dns_public_ip.pubip).to receive(:create_update).and_return(Fog::Network::AzureRM::PublicIp.new)
+      expect(dns_public_ip.update_dns_for_fqdn(node)).not_to be_nil
     end
 
-    it 'returns nil if availability is "single"' do
+    it 'returns not nil if availability is "single"' do
       node['workorder']['box']['ciAttributes']['availability'] = 'single'
-      allow(dns_public_ip.pubip).to receive(:get) { pub_ip }
-      allow(dns_public_ip.pubip).to receive(:create_update) {}
-      expect(dns_public_ip.update_dns_for_fqdn(node)).to be_nil
+      allow(dns_public_ip.pubip).to receive(:get).and_return(Fog::Network::AzureRM::PublicIp.new)
+      allow(dns_public_ip.pubip).to receive(:create_update).and_return(Fog::Network::AzureRM::PublicIp.new)
+      expect(dns_public_ip.update_dns_for_fqdn(node)).not_to be_nil
     end
 
     it 'returns lb-list if availability is "redundant"' do
       node['workorder']['box']['ciAttributes']['availability'] = 'redundant'
       allow(dns_public_ip.pubip).to receive(:check_existence_publicip) { true }
-      allow(dns_public_ip.pubip).to receive(:get) { pub_ip }
-      allow(dns_public_ip.pubip).to receive(:create_update) {}
+      allow(dns_public_ip.pubip).to receive(:get).and_return(Fog::Network::AzureRM::PublicIp.new)
+      allow(dns_public_ip.pubip).to receive(:create_update).and_return(Fog::Network::AzureRM::PublicIp.new)
       expect(dns_public_ip.update_dns_for_fqdn(node)).to eq([{"ciId"=>1189945}])
     end
   end

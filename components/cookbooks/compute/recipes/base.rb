@@ -26,26 +26,26 @@ ruby_block 'wait for ssh in windows' do
   block do
 
     #wait until we can get a response from Windows VM
-    start_time = Time.now.to_i
-    i = 1
+	start_time = Time.now.to_i
+	i = 1
     win_ssh_failed = true
-    ssh_cmd = node.ssh_interactive_cmd.gsub("IP",node.ip) + "hostname > /dev/null"
+    ssh_cmd = node[:ssh_interactive_cmd].gsub("IP",node[:ip]) + "hostname > /dev/null"
     ssh_cmd = ssh_cmd.gsub("StrictHostKeyChecking=no","StrictHostKeyChecking=no -o ConnectTimeout=5") 
-    Chef::Log.info("Started waiting for ssh response from #{node.ip}")
+	Chef::Log.info("Started waiting for ssh response from #{node[:ip]}")
     Chef::Log.info("SSH command is: #{ssh_cmd}")
 
     #try connecting for 300 seconds
     while Time.now.to_i - start_time < 300 do
-      Chef::Log.info( "Attempt:#{i} to get a valid ssh response from #{node.ip} ...")
+      Chef::Log.info( "Attempt:#{i} to get a valid ssh response from #{node[:ip]} ...")
       result = system(ssh_cmd)
 
       if result
         win_ssh_failed = false
-        Chef::Log.info( "Received a valid response from #{node.ip}! Moving on to a next step...")
+        Chef::Log.info( "Received a valid response from #{node[:ip]}! Moving on to a next step...")
         break
       end
 
-      Chef::Log.info( "Did not receive a valid response from #{node.ip}. Retrying...")
+      Chef::Log.info( "Did not receive a valid response from #{node[:ip]}. Retrying...")
       sleep 20
       i += 1
     end #while
@@ -56,7 +56,7 @@ ruby_block 'wait for ssh in windows' do
     end
 
   end
-end if node[:ostype] =~ /windows/ &&  node.workorder.rfcCi.rfcAction !~ /update/
+end if node[:ostype] =~ /windows/ &&  node[:workorder][:rfcCi][:rfcAction] !~ /update/
 
 ruby_block 'install base' do
   block do
@@ -65,14 +65,14 @@ ruby_block 'install base' do
     shell_timeout = 36000
 
     # install os package repos - repo_map keyed by os
-    os_type = node.ostype
-    cloud_name = node.workorder.cloud.ciName
+    os_type = node[:ostype]
+    cloud_name = node[:workorder][:cloud][:ciName]
     repo_cmds = []
-    if node.workorder.services.has_key?("compute") &&
-       node.workorder.services["compute"][cloud_name][:ciAttributes].has_key?("repo_map") &&
-       node.workorder.services["compute"][cloud_name][:ciAttributes][:repo_map].include?(os_type)
+    if node[:workorder][:services].has_key?("compute") &&
+       node[:workorder][:services]["compute"][cloud_name][:ciAttributes].has_key?("repo_map") &&
+       node[:workorder][:services]["compute"][cloud_name][:ciAttributes][:repo_map].include?(os_type)
 
-      repo_map = JSON.parse(node.workorder.services["compute"][cloud_name][:ciAttributes][:repo_map])
+      repo_map = JSON.parse(node[:workorder][:services]["compute"][cloud_name][:ciAttributes][:repo_map])
       repo_cmds = [repo_map[os_type]]
       Chef::Log.debug("repo_cmds: #{repo_cmds.inspect}")
     else
@@ -80,14 +80,14 @@ ruby_block 'install base' do
     end
 
     # add repo_list from os
-    if node.has_key?("repo_list") && !node.repo_list.nil? && node.repo_list.include?('[')
-      Chef::Log.info("adding compute-level repo_list: #{node.repo_list}")
-      repo_cmds += JSON.parse(node.repo_list)
+    if node.has_key?("repo_list") && !node[:repo_list].nil? && node[:repo_list].include?('[')
+      Chef::Log.info("adding compute-level repo_list: #{node[:repo_list]}")
+      repo_cmds += JSON.parse(node[:repo_list])
     end
 
     if repo_cmds.size > 0
       # todo: set proxy env vars - current use case not required
-      cmd = node.ssh_interactive_cmd.gsub("IP",node.ip) + '"'+ repo_cmds.join("; ") + '"'
+      cmd = node[:ssh_interactive_cmd].gsub("IP",node[:ip]) + '"'+ repo_cmds.join("; ") + '"'
       Chef::Log.info("running setup repos: #{cmd}")
       result = `#{cmd}`
       if result.to_i != 0
@@ -102,17 +102,17 @@ ruby_block 'install base' do
     circuit_dir = "/opt/oneops/inductor"
     if node.has_key?("circuit_dir")
       # handle old packer dir
-      circuit_dir = node.circuit_dir.gsub("/packer","")
+      circuit_dir = node[:circuit_dir].gsub("/packer","")
     end
     cookbook_path = "#{circuit_dir}/shared/"
     Chef::Log.info("Syncing #{cookbook_path} ...")
-    cmd = node.rsync_cmd.gsub("SOURCE",cookbook_path).gsub("DEST","~/shared/").gsub("IP",node.ip)
+    cmd = node[:rsync_cmd].gsub("SOURCE",cookbook_path).gsub("DEST","~/shared/").gsub("IP",node[:ip])
     result = shell_out(cmd, :timeout => shell_timeout)
     Chef::Log.info("#{cmd} returned: #{result.stdout}")
     result.error!
 
     # remove first bom and last Component class
-    class_parts = node.workorder.rfcCi.ciClassName.split(".")
+    class_parts = node[:workorder][:rfcCi][:ciClassName].split(".")
     class_parts.delete_at(0)
     class_parts.delete_at(class_parts.size-1)
     Chef::Log.debug("class parts: #{class_parts.inspect}")
@@ -123,17 +123,17 @@ ruby_block 'install base' do
       sub_circuit_dir = "circuit-" + class_parts.join("-")
     end
     cookbook_path = "#{circuit_dir}/#{sub_circuit_dir}/"
-    node.set["circuit_dir"] = circuit_dir
+    node.set[:circuit_dir] = circuit_dir
 
     Chef::Log.info("Syncing #{cookbook_path} ...")
-    cmd = node.rsync_cmd.gsub("SOURCE",cookbook_path).gsub("DEST","~/#{sub_circuit_dir}/").gsub("IP",node.ip)
+    cmd = node[:rsync_cmd].gsub("SOURCE",cookbook_path).gsub("DEST","~/#{sub_circuit_dir}/").gsub("IP",node[:ip])
     result = shell_out(cmd, :timeout => shell_timeout)
     Chef::Log.debug("#{cmd} returned: #{result.stdout}")
     result.error!
 
 
     # install base: oneops user, ruby, chef, nagios
-    env_vars = JSON.parse(node.workorder.services.compute[cloud_name][:ciAttributes][:env_vars])
+    env_vars = JSON.parse(node[:workorder][:services][:compute][cloud_name][:ciAttributes][:env_vars])
     Chef::Log.info("env_vars: #{env_vars.inspect}")
     args = ""
     args_win = { }
@@ -148,7 +148,7 @@ ruby_block 'install base' do
     end
 
     sudo = ""
-    if !node.ssh_cmd.include?("root@")
+    if !node[:ssh_cmd].include?("root@")
       sudo = "sudo "
     end
 
@@ -156,7 +156,7 @@ ruby_block 'install base' do
 
     if os_type !~ /windows/
       install_base = "components/cookbooks/compute/files/default/install_base.sh"
-      cmd = node.ssh_interactive_cmd.gsub("IP",node.ip) + "\"#{sudo}#{sub_circuit_dir}/#{install_base} #{args}\""
+      cmd = node[:ssh_interactive_cmd].gsub("IP",node[:ip]) + "\"#{sudo}#{sub_circuit_dir}/#{install_base} #{args}\""
 
       Chef::Log.info("Executing Command: #{cmd}")
       result = shell_out(cmd, :timeout => shell_timeout)
@@ -167,10 +167,10 @@ ruby_block 'install base' do
     else
       # install base: oneops user, ruby, chef, nagios
 
-      if node.workorder.services.has_key?("mirror") &&
-         node.workorder.services["mirror"][cloud_name][:ciAttributes].has_key?("mirrors")
+      if node[:workorder][:services].has_key?("mirror") &&
+         node[:workorder][:services]["mirror"][cloud_name][:ciAttributes].has_key?("mirrors")
 
-         mirror_vars = JSON.parse( node.workorder.services["mirror"][cloud_name][:ciAttributes][:mirrors] )
+         mirror_vars = JSON.parse( node[:workorder][:services]["mirror"][cloud_name][:ciAttributes][:mirrors] )
          mirror_vars.each_pair do |k,v|
            if k =~ /chocopkg/
              args_win[:chocopkg] = v
@@ -197,7 +197,7 @@ ruby_block 'install base' do
 
       install_base = "components/cookbooks/compute/files/default/install_base.ps1"
       install_cmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File #{sub_circuit_dir}/#{install_base} #{str_args} "
-      cmd = node.ssh_interactive_cmd.gsub("IP",node.ip) + install_cmd
+      cmd = node[:ssh_interactive_cmd].gsub("IP",node[:ip]) + install_cmd
 
       Chef::Log.info("Executing Command: #{cmd}")
       result = shell_out(cmd, :timeout => shell_timeout)
@@ -206,11 +206,11 @@ ruby_block 'install base' do
       result.error!
 
 
-      user = node.oneops_user
+      user = node[:oneops_user]
       sudo_file = "/home/#{user}/circuit-oneops-1/components/cookbooks/compute/files/default/sudo"
       sudo_cmd = "cp #{sudo_file} /usr/bin "
 
-      cmd = node.ssh_interactive_cmd.gsub("IP",node.ip) + sudo_cmd
+      cmd = node[:ssh_interactive_cmd].gsub("IP",node[:ip]) + sudo_cmd
       Chef::Log.info("Executing Command: #{cmd}")
       result = shell_out(cmd, :timeout => shell_timeout)
 
@@ -219,7 +219,7 @@ ruby_block 'install base' do
 
 
       sudo_cmd = "chmod +x /usr/bin/sudo"
-      cmd = node.ssh_interactive_cmd.gsub("IP",node.ip) + sudo_cmd
+      cmd = node[:ssh_interactive_cmd].gsub("IP",node[:ip]) + sudo_cmd
       Chef::Log.info("Executing Command: #{cmd}")
       result = shell_out(cmd, :timeout => shell_timeout)
 
@@ -228,12 +228,12 @@ ruby_block 'install base' do
 
     end
 
-    cmd = node.ssh_cmd.gsub("IP",node.ip) + "\"grep processor /proc/cpuinfo | wc -l\""
+    cmd = node[:ssh_cmd].gsub("IP",node[:ip]) + "\"grep processor /proc/cpuinfo | wc -l\""
     result = shell_out(cmd, :timeout => shell_timeout)
     cores = result.stdout.gsub("\n","")
     puts "***RESULT:cores=#{cores}"
 
-    cmd = node.ssh_cmd.gsub("IP",node.ip) + "\"free | head -2 | tail -1 | awk '{ print \\$2/1024 }'\""
+    cmd = node[:ssh_cmd].gsub("IP",node[:ip]) + "\"free | head -2 | tail -1 | awk '{ print \\$2/1024 }'\""
     puts cmd
     result = shell_out(cmd, :timeout => shell_timeout)
     ram = result.stdout.gsub("\n","")

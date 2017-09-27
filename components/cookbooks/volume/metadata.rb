@@ -1,4 +1,4 @@
-name             "Volume"
+name             "volume"
 description      "Volume"
 version          "0.1"
 maintainer       "OneOps"

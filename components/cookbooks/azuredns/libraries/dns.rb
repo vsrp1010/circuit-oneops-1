@@ -3,6 +3,8 @@
 # rubocop:disable MethodLength
 # rubocop:disable AbcSize
 require 'chef'
+require 'fog/azurerm'
+
 require File.expand_path('../record_set.rb', __FILE__)
 module AzureDns
   # Cookbook Name:: azuredns
@@ -12,17 +14,20 @@ module AzureDns
   # a) set dns recordset
   # b) create zone
   #
+
+  # DNS Library implementation
   class DNS
     attr_accessor :recordset
     attr_accessor :zone
 
     def initialize(platform_resource_group, azure_rest_token, dns_attributes)
       @platform_resource_group = platform_resource_group
-      @azure_rest_token = azure_rest_token
+      @azure_rest_token = azure_rest_token # Not being used in this class.
       @dns_attributes = dns_attributes
-      @recordset = AzureDns::RecordSet.new(@dns_attributes, @azure_rest_token, @platform_resource_group)
+      @recordset = AzureDns::RecordSet.new(@platform_resource_group, @dns_attributes)
       @zone = nil
     end
+
     # get dns record type - check for ip addresses
     def get_record_type(dns_name, dns_values)
       # default to CNAME
@@ -35,7 +40,7 @@ module AzureDns
     end
 
     def create_zone
-      @zone = AzureDns::Zone.new(@dns_attributes, @azure_rest_token, @platform_resource_group)
+      @zone = AzureDns::Zone.new(@dns_attributes, @platform_resource_group)
       zone_exist = @zone.check_for_zone
       unless zone_exist
         Chef::Log.info('azuredns:dns.rb - Zone does not exist')
@@ -98,11 +103,11 @@ module AzureDns
         # need to remove the zone name from the end of the record set name.  Azure will auto append the zone to the recordset
         # name internally.
         # dns_name will be the record set created/updated in azure dns
-        dns_name = entry['name'].sub('.' + @dns_attributes['zone'], '')
+        dns_name = entry[:name].sub('.' + @dns_attributes['zone'], '')
         Chef::Log.info("azuredns:set_dns_records.rb - dns_name is: #{dns_name}")
 
         # dns_value will be the A or CNAME records put on the record sets
-        dns_values = entry['values'].is_a?(String) ? Array.new([entry['values']]) : entry['values']
+        dns_values = entry[:values].is_a?(String) ? Array.new([entry[:values]]) : entry[:values]
         Chef::Log.info("azuredns:dns.rb - dns_name is: #{dns_name}")
         Chef::Log.info("azuredns:dns.rb - dns_values are: #{dns_values}")
 
@@ -141,7 +146,7 @@ module AzureDns
         puts "***FAULT:FATAL=#{msg}"
         e = Exception.new('no backtrace')
         e.set_backtrace('')
-        fail e
+        raise e
       end
     end
 
@@ -155,15 +160,18 @@ module AzureDns
       types.each do |type|
         node_ciBaseAttributes = node_workorder_rfcci_json['ciBaseAttributes']
         node_ciAttributes = node_workorder_rfcci_json['ciAttributes']
-        if type == "aliases"
+
+        case type
+        when'aliases'
           node_attributes = node_ciBaseAttributes['aliases']
-        elsif type == "full_aliases"
+        when 'full_aliases'
           node_attributes = node_ciBaseAttributes['full_aliases']
-        elsif type == "current_aliases"
+        when 'current_aliases'
           node_attributes = node_ciAttributes['aliases']
-        elsif type == "current_full_aliases"
+        when 'current_full_aliases'
           node_attributes = node_ciAttributes['full_aliases']
         end
+
         if node_ciBaseAttributes.key?('aliases') && node_ciBaseAttributes.key?('full_aliases') && node_ciAttributes.key?('aliases') && node_ciAttributes.key?('full_aliases') && !is_hostname_entry
           begin
             json_parse_result = JSON.parse(node_attributes)
@@ -178,24 +186,25 @@ module AzureDns
 
     def remove_all_aliases(node_workorder_rfcci_json, is_hostname_entry)
       hash_of_removed_aliases = []
-      types = ['aliases', 'current_aliases', 'full_aliases', 'current_full_aliases']
-      hash_of_all_aliases = get_all_aliases(node_workorder_rfcci_json,  is_hostname_entry, types)
-      if !hash_of_all_aliases.empty?
-      index = 0
-      while index < 3
-        hash_aliase = hash_of_all_aliases.fetch(index)
-        all_aliases = hash_aliase[:values]
-        hash_current_aliase = hash_of_all_aliases.fetch(index+1)
-        all_current_aliases = hash_current_aliase[:values]
-        all_current_aliases.each do |active_alias|
-          all_aliases.delete(active_alias)
-        end unless all_current_aliases.nil? unless all_aliases.nil?
-        hash_of_removed_aliases.push(name: hash_aliase[:name], values: all_aliases)
-        index+=2
-      end
+      types = %w(aliases current_aliases full_aliases current_full_aliases)
+      hash_of_all_aliases = get_all_aliases(node_workorder_rfcci_json, is_hostname_entry, types)
+      unless hash_of_all_aliases.empty?
+        index = 0
+        while index < 3
+          hash_aliase = hash_of_all_aliases.fetch(index)
+          all_aliases = hash_aliase[:values]
+          hash_current_aliase = hash_of_all_aliases.fetch(index + 1)
+          all_current_aliases = hash_current_aliase[:values]
+          all_current_aliases.each do |active_alias|
+            all_aliases.delete(active_alias)
+          end unless all_current_aliases.nil? unless all_aliases.nil?
+          hash_of_removed_aliases.push(name: hash_aliase[:name], values: all_aliases)
+          index += 2
+        end
       end
       hash_of_removed_aliases
     end
+
     def remove_old_aliases(customer_domain, priority, cloud_dns_id, aliases, full_aliases)
       # pushing aliases to be deleted in an entries array
       entries = get_entries(customer_domain, priority, cloud_dns_id, aliases)
@@ -208,6 +217,7 @@ module AzureDns
       # For each entry, removing record sets from azure
       delete_record_set(entries)
     end
+
     def get_entries(customer_domain, priority, cloud_dns_id, aliases)
       entries = []
       return if aliases.nil?
@@ -222,18 +232,18 @@ module AzureDns
 
         if !value.nil?
           Chef::Log.info("azuredns:remove_old_aliases.rb - short alias dns_name: #{alias_name} value: #{value.first}")
-          entries.push(:name => alias_name, :values => value.first)
+          entries.push(name: alias_name, values: value.first)
         else
-          Chef::Log.info("azuredns:remove_old_aliases.rb - Nothing to remove")
+          Chef::Log.info('azuredns:remove_old_aliases.rb - Nothing to remove')
         end
-        if priority == '1'
 
-          alias_platform_dns_name = alias_name.gsub("\."+cloud_dns_id,'').downcase
+        if priority == '1'
+          alias_platform_dns_name = alias_name.gsub("\." + cloud_dns_id, '').downcase
           Chef::Log.info("azuredns:remove_old_aliases.rb - alias_platform_dns_name is: #{alias_platform_dns_name}")
           # get the value from azure
           value = @recordset.get_existing_records_for_recordset('CNAME', alias_platform_dns_name)
           if !value.nil?
-            entries.push(:name => alias_platform_dns_name, :values => value.first)
+            entries.push(name: alias_platform_dns_name, values: value.first)
           else
             Chef::Log.info('azuredns:remove_old_aliases.rb - Nothing to remove')
           end
@@ -260,7 +270,7 @@ module AzureDns
         name = entry[:name]
         Chef::Log.info("azuredns:remove_old_aliases.rb - removing entry: #{name}")
         @recordset.remove_record_set(name, 'CNAME')
-        Chef::Log.info("azuredns:remove_old_aliases.rb - entry removed")
+        Chef::Log.info('azuredns:remove_old_aliases.rb - entry removed')
       end unless entries.nil?
     end
   end

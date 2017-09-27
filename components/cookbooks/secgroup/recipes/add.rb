@@ -27,8 +27,8 @@ when /ec2|openstack|aliyun/
   include_recipe "secgroup::add_secgroup_"+node[:provider_class]
 
   # need to always return the attrs, updated or not
-  puts "***RESULTJSON:group_id="+JSON.generate({"value" => node.secgroup.group_id})
-  puts "***RESULTJSON:group_name="+JSON.generate({"value" => node.secgroup.group_name})
+  puts "***RESULTJSON:group_id="+JSON.generate({"value" => node[:secgroup][:group_id]})
+  puts "***RESULTJSON:group_name="+JSON.generate({"value" => node[:secgroup][:group_name]})
 
 else
 

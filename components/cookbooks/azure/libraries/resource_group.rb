@@ -26,23 +26,22 @@ module AzureResources
         resource_group.location = location
 
         start_time = Time.now.to_i
-        response =
-          @client.resource_groups.create_or_update(rg_name,
-                                                   resource_group).value!
+        @client.resource_groups.create_or_update(rg_name,
+                                                   resource_group)
         end_time = Time.now.to_i
-        OOLog.info("Resource Group created in #{end_time - start_time} seconds")
       rescue MsRestAzure::AzureOperationError => e
         OOLog.fatal("Error creating resource group: #{e.body}")
       rescue => ex
         OOLog.fatal("Error creating resource group: #{ex.message}")
       end
+
+      OOLog.info("Resource Group created in #{end_time - start_time} seconds")
     end
 
     # This method will retrieve the resource group from azure.
     def get(rg_name)
       begin
-        response = @client.resource_groups.check_existence(rg_name).value!
-        response.body
+        @client.resource_groups.check_existence(rg_name)
       rescue MsRestAzure::AzureOperationError => e
         OOLog.fatal("Error getting resource group: #{e.body}")
       rescue => ex
@@ -54,14 +53,15 @@ module AzureResources
     def delete(rg_name)
       begin
         start_time = Time.now.to_i
-        response = @client.resource_groups.delete(rg_name).value!
+        @client.resource_groups.delete(rg_name)
         end_time = Time.now.to_i
-        OOLog.info("Resource Group deleted in #{end_time - start_time} seconds")
       rescue MsRestAzure::AzureOperationError => e
         OOLog.fatal("Error deleting resource group: #{e.body}")
       rescue => ex
         OOLog.fatal("Error deleting resource group: #{ex.message}")
       end
+
+      OOLog.info("Resource Group deleted in #{end_time - start_time} seconds")
     end
 
     # this method will return the resource group and availability set names

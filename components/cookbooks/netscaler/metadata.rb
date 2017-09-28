@@ -1,4 +1,4 @@
-name             "netscaler"
+name             "Netscaler"
 description      "Netscaler"
 version          "0.1"
 maintainer       "OneOps"

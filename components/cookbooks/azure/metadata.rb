@@ -1,4 +1,4 @@
-name 'azure'
+name 'Azure'
 description 'Azure Cloud Service'
 version '0.1'
 maintainer 'OneOps'

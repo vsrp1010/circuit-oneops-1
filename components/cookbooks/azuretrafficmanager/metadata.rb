@@ -1,4 +1,4 @@
-name             'azuretrafficmanager'
+name             'Azuretrafficmanager'
 description      'Installs/Configures trafficmanager'
 version          '0.1.0'
 maintainer       'OneOps'

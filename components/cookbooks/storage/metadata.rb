@@ -1,4 +1,4 @@
-name             "storage"
+name             "Storage"
 description      "Storage"
 version          "0.1"
 maintainer       "OneOps"

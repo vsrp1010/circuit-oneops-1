@@ -1,4 +1,4 @@
-name             'azure_base'
+name             'Azure_base'
 maintainer       'OneOps'
 maintainer_email 'support@oneops.com'
 license          'Apache License, Version 2.0'

@@ -1,4 +1,4 @@
-name             "fqdn"
+name             "Fqdn"
 description      "Updates FQDN records"
 version          "0.1"
 maintainer       "OneOps"

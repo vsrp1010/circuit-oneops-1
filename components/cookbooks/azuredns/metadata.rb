@@ -1,4 +1,4 @@
-name             'azuredns'
+name             'Azuredns'
 maintainer       'oneops'
 maintainer_email 'support@oneops.com'
 license          'Apache License, Version 2.0'

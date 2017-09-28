@@ -1,4 +1,4 @@
-name             "compute"
+name             "Compute"
 description      "Installs/Configures compute"
 maintainer       "OneOps"
 maintainer_email "support@oneops.com"

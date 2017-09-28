@@ -1,4 +1,4 @@
-name 'azuregateway'
+name 'Azuregateway'
 description 'Azure Application Gateway'
 version '0.1.0'
 maintainer 'OneOps'

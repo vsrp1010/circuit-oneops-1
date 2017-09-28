@@ -1,4 +1,4 @@
-name             "haproxy"
+name             "Haproxy"
 description      "HA Proxy"
 version          "0.1"
 maintainer       "OneOps"

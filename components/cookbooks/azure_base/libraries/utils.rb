@@ -8,9 +8,9 @@ module Utils
     begin
       # Create authentication objects
       token_provider =
-        MsRestAzure::ApplicationTokenProvider.new(tenant_id,
-                                                  client_id,
-                                                  client_secret)
+          MsRestAzure::ApplicationTokenProvider.new(tenant_id,
+                                                    client_id,
+                                                    client_secret)
 
       OOLog.fatal('Azure Token Provider is nil') if token_provider.nil?
 
@@ -36,7 +36,7 @@ module Utils
   def set_proxy_from_env(node)
     cloud_name = node['workorder']['cloud']['ciName']
     compute_service =
-      node['workorder']['services']['compute'][cloud_name]['ciAttributes']
+        node['workorder']['services']['compute'][cloud_name]['ciAttributes']
     OOLog.info("ENV VARS ARE: #{compute_service['env_vars']}")
     env_vars_hash = JSON.parse(compute_service['env_vars'])
     OOLog.info("APIPROXY is: #{env_vars_hash['apiproxy']}")
@@ -171,21 +171,21 @@ module Utils
         az_size = 'Standard_DS14'
       #old mappings - this part is used to deprovision only
       when 'S-IO'
-        if(isUndeployment)
+        if (isUndeployment)
           az_size = 'Standard_DS1'
-        else 
+        else
           OOLog.fatal("Azure size map, '#{size}' not found in Mappings List")
         end
       when 'M-IO'
-        if(isUndeployment)
+        if (isUndeployment)
           az_size = 'Standard_DS2'
-        else 
+        else
           OOLog.fatal("Azure size map, '#{size}' not found in Mappings List")
         end
       when 'L-IO'
-        if(isUndeployment)
+        if (isUndeployment)
           az_size = 'Standard_DS3'
-        else 
+        else
           OOLog.fatal("Azure size map, '#{size}' not found in Mappings List")
         end
       else
@@ -237,6 +237,21 @@ module Utils
     return resource
   end
 
+  def get_fault_domains(region)
+
+    OOLog.info("Getting Fault Domain: #{region}")
+# when new region added to oneops this fault domains needs to be updated
+    fault_domains = {:eastus2 => 3, :southcentralus => 3, :eastasia => 2, :japaneast => 2, :default => 2}
+
+    OOLog.info("Finished Fault Domain: #{region}")
+    return fault_domains[region.to_sym].nil? ? fault_domains['default'.to_sym] : fault_domains[region.to_sym]
+  end
+
+  def get_update_domains
+
+    return 20
+  end
+
   module_function :get_credentials,
                   :set_proxy,
                   :set_proxy_from_env,
@@ -245,6 +260,8 @@ module Utils
                   :abbreviate_location,
                   :is_prm,
                   :get_resource_tags,
-                  :update_resource_tags
+                  :update_resource_tags,
+                  :get_fault_domains,
+                  :get_update_domains
 
 end

@@ -49,7 +49,10 @@ module AzureBase
 
         begin
           #if we are using the managed disk attached to vm availability set needs to setup use_managed_disk to true
-          @compute_client.availability_sets.create(resource_group: @rg_name, name: @as_name, location: @location , use_managed_disk: true)
+
+
+          @compute_client.availability_sets.create(resource_group: @rg_name, name: @as_name, location: @location, use_managed_disk: true, platform_fault_domain_count: Utils.get_fault_domains(@location
+          ), platform_update_domain_count: Utils.get_update_domains)
         rescue MsRestAzure::AzureOperationError => e
           OOLog.fatal("Error adding an availability set: #{e.body}")
         rescue => ex

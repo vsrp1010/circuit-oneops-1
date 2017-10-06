@@ -67,7 +67,9 @@ module AzureCompute
       end
       OOLog.info(" Deleting OS Managed disk operation took #{duration} seconds")
     end
-=begin
+
+    # Below code needs to be removed after migrating Unmanaged disk to managed disks
+
     def get_storage_account_name
       # create storage account if needed
       begin
@@ -95,11 +97,11 @@ module AzureCompute
         OOLog.info("Storage Type: #{sku_name}_#{replication}")
 
         storage_account =
-            @storage_client.storage_accounts.create({ name: storage_account_name,
-                                                      resource_group: @resource_group_name,
-                                                      location: @location,
-                                                      sku_name: sku_name,
-                                                      replication: replication })
+            @storage_client.storage_accounts.create({name: storage_account_name,
+                                                     resource_group: @resource_group_name,
+                                                     location: @location,
+                                                     sku_name: sku_name,
+                                                     replication: replication})
         if storage_account.nil?
           OOLog.fatal("***FAULT:FATAL=Could not create storage account #{storage_account_name}")
         end
@@ -109,7 +111,7 @@ module AzureCompute
     def wait_for_storage_account(storage_account_name)
       i = 0
       until storage_account_created?(storage_account_name) do
-        if(i >= 10)
+        if (i >= 10)
           OOLog.fatal("***FAULT:FATAL=Timeout. Could not find storage account #{storage_account_name}")
         end
         i += 1
@@ -146,6 +148,7 @@ module AzureCompute
 
     # This function will generate all possible storage account NAMES
     # for current Resource Group.
+
     def generate_storage_account_names(storage_account_name)
       # The max number of resources in a Resource Group is 800
       # Microsoft guidelines is 40 Disks per storage account
@@ -157,9 +160,9 @@ module AzureCompute
 
       (1..limit).each do |index|
         if index < 10
-          account_name =  "#{storage_account_name}0" + index.to_s
+          account_name = "#{storage_account_name}0" + index.to_s
         else
-          account_name =  "#{storage_account_name}" + index.to_s
+          account_name = "#{storage_account_name}" + index.to_s
         end
         storage_accounts[index-1] = account_name
       end
@@ -201,7 +204,7 @@ module AzureCompute
         response =
             @storage_client.storage_accounts.check_name_availability(storage_account_name, 'Microsoft.Storage/storageAccounts')
         OOLog.info("Storage Name Available: #{response}")
-      rescue  MsRestAzure::AzureOperationError => e
+      rescue MsRestAzure::AzureOperationError => e
         OOLog.info("ERROR checking availability of #{storage_account_name}")
         OOLog.info("ERROR Body: #{e.body}")
         return nil
@@ -216,7 +219,7 @@ module AzureCompute
         response =
             @storage_client.storage_accounts.check_storage_account_exists(@resource_group_name, storage_account_name)
         OOLog.info("Storage Account Exists: #{response}")
-      rescue  MsRestAzure::AzureOperationError => e
+      rescue MsRestAzure::AzureOperationError => e
         OOLog.info("#ERROR Body: #{e.body}")
         return false
       rescue => ex
@@ -224,6 +227,6 @@ module AzureCompute
       end
       response
     end
-=end
+# Above block code needs to be removed after migrating all Unmanaged vms moved to managed VMS
   end
 end

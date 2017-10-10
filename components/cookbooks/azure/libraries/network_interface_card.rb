@@ -211,9 +211,8 @@ module AzureNetwork
       # retrieve and set the private ip
       @private_ip = nic.private_ip_address
       OOLog.info('Private IP is: ' + @private_ip)
-      nics =Array[nic.id]
-      nics
-      #nic.id
+
+      nic.id
     end
 
     def get_nic_name(raw_nic_id)

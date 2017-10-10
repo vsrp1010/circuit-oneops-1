@@ -107,7 +107,7 @@ module AzureCompute
       end
 
       # network profile values
-      vm_hash[:network_interface_card_ids] = @network_profile.build_network_profile(@compute_service[:express_route_enabled],
+      nic_id = @network_profile.build_network_profile(@compute_service[:express_route_enabled],
                                                                                     @compute_service[:resource_group],
                                                                                     @compute_service[:network],
                                                                                     @compute_service[:network_address].strip,
@@ -115,6 +115,8 @@ module AzureCompute
                                                                                     (@compute_service[:dns_ip]).split(','),
                                                                                     @ip_type,
                                                                                     @secgroup_name)
+
+      vm_hash[:network_interface_card_ids] = [nic_id]
 
       @private_ip = @network_profile.private_ip
       # create the virtual machine

@@ -417,7 +417,7 @@ else
       next # could not find VM. Nothing to be done; skipping
     else
       # the asumption is that each VM will have only one NIC
-      nic_id = vm.network_interface_card_id
+      nic_id = vm.network_interface_card_ids[0]
       nic_name = nic_svc.get_nic_name(nic_id)
       # nic = nic_svc.get(resource_group_name, nic_name)
       nic = nic_svc.get(nic_name)

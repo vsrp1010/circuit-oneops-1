@@ -98,7 +98,7 @@ if storage.nil?
   return
 end
 
-include_recipe "shared::set_provider"
+include_recipe "shared::set_provider_new"
 
 if (node[:provider_class] =~ /azure/)
   require File.expand_path('../../../azure_base/libraries/utils.rb', __FILE__)

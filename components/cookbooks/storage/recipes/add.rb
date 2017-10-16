@@ -26,7 +26,7 @@
 
 require File.expand_path('../../../azure_base/libraries/utils.rb', __FILE__)
 require 'json'
-include_recipe 'shared::set_provider'
+include_recipe 'shared::set_provider_new'
 size_config = node.workorder.rfcCi.ciAttributes["size"]
 size_scale = size_config[-1,1]
 size = size_config.to_i.to_s.to_i

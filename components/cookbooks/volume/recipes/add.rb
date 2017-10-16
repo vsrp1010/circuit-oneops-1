@@ -54,7 +54,7 @@ elsif mode == 'raid10' && (device_maps.size < 4 || device_maps.size%2 != 0)
   exit_with_error("Minimum of 4 storage slices and storage slice count mod 2 are required for #{mode}")
 end
 
-include_recipe "shared::set_provider"
+include_recipe "shared::set_provider_new"
 
 size = attrs[:size].gsub(/\s+/, "")
 if size == '-1'

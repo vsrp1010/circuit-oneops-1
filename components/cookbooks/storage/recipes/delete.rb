@@ -19,7 +19,7 @@
 max_retry_count = 5
 cloud_name = node[:workorder][:cloud][:ciName]
 provider_class = node[:workorder][:services][:storage][cloud_name][:ciClassName].downcase
-include_recipe "shared::set_provider"           
+include_recipe "shared::set_provider_new"
 dev_map = node.workorder.rfcCi.ciAttributes["device_map"]
 if provider_class =~ /azure/
   require File.expand_path('../../../azure_base/libraries/utils.rb', __FILE__)

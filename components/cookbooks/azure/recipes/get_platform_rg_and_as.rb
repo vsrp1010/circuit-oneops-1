@@ -1,6 +1,6 @@
 # a little recipe that sets the platform, platform-resource-group and platform-availability-set for azure deployments.
 # several other recipes use this
-
+require 'fog/azurerm'
 require File.expand_path('../../../azure_base/libraries/logger.rb', __FILE__)
 require File.expand_path('../../../azure_base/libraries/utils.rb', __FILE__)
 

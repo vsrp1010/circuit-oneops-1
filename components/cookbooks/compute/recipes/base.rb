@@ -18,7 +18,7 @@
 
 node.set["use_initial_user"] = true
 
-include_recipe "shared::set_provider"
+include_recipe "shared::set_provider_new"
 include_recipe "compute::ssh_port_wait"
 include_recipe "compute::ssh_cmd_for_remote"
 

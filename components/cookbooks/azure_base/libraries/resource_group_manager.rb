@@ -1,4 +1,3 @@
-require 'fog/azurerm'
 require File.expand_path('../../libraries/azure_base_manager.rb', __FILE__)
 require File.expand_path('../../libraries/logger.rb', __FILE__)
 require File.expand_path('../../libraries/utils.rb', __FILE__)

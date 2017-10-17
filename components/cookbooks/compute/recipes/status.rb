@@ -14,7 +14,7 @@
 
 require 'fog'
 
-include_recipe "shared::set_provider"
+include_recipe "shared::set_provider_new"
 
 ci = node[:workorder][:ci]
 Chef::Log.debug("ci attrs:"+ci[:ciAttributes].inspect.gsub("\n"," "))  

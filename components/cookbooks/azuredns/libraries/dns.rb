@@ -3,7 +3,6 @@
 # rubocop:disable MethodLength
 # rubocop:disable AbcSize
 require 'chef'
-require 'fog/azurerm'
 
 require File.expand_path('../record_set.rb', __FILE__)
 module AzureDns

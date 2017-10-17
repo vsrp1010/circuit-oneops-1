@@ -14,7 +14,7 @@
 
 require 'fog'
 
-include_recipe "shared::set_provider"
+include_recipe "shared::set_provider_new"
 
 cloud_name = node[:workorder][:cloud][:ciName]
 provider = node[:workorder][:services][:compute][cloud_name][:ciClassName].gsub("cloud.service.","").downcase

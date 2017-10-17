@@ -1,4 +1,3 @@
-require 'fog/azurerm'
 require 'chef'
 
 module AzureCompute
@@ -55,8 +54,12 @@ module AzureCompute
         OOLog.info("Deleting OS Managed Disk '#{managed_diskname}' in '#{resource_group_name}' ")
         start_time = Time.now.to_i
 
-        os_managed_disk = @compute_client.managed_disks.get(resource_group_name, managed_diskname)
-        os_managed_disk.destroy
+		if !@compute_client.managed_disks.check_managed_disk_exists(resource_group_name, managed_diskname)
+          OOLog.info("Managed disk '#{managed_diskname}' was not found in '#{resource_group_name}', skipping deletion..")
+		else
+          os_managed_disk = @compute_client.managed_disks.get(resource_group_name, managed_diskname)
+          os_managed_disk.destroy
+		end
         end_time = Time.now.to_i
         duration = end_time - start_time
 

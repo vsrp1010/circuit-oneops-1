@@ -1,7 +1,6 @@
 require File.expand_path('../../../azure_base/libraries/resource_group_manager.rb', __FILE__)
 require File.expand_path('../../../azure/libraries/virtual_machine.rb', __FILE__)
 require 'chef'
-require 'fog/azurerm'
 
 class Datadisk
   attr_accessor :device_maps,

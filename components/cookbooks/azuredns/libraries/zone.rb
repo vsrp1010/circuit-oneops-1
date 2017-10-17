@@ -1,4 +1,3 @@
-require 'fog/azurerm'
 require 'chef'
 
 

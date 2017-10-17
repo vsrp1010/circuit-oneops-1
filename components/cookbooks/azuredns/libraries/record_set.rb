@@ -2,7 +2,6 @@
 # rubocop:disable AbcSize
 # rubocop:disable ClassLength
 # rubocop:disable LineLength
-require 'fog/azurerm'
 require ::File.expand_path('../../../azure_base/libraries/logger', __FILE__)
 
 

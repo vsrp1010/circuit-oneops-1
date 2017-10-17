@@ -136,10 +136,13 @@ module AzureCompute
       @ip_type = 'private' if @express_route_enabled == 'true'
       OOLog.info('ip_type: ' + @ip_type)
       begin
-        vm = @virtual_machine_lib.get(@resource_group_name, @server_name)
+        vm_exists = @virtual_machine_lib.check_vm_exists?(@resource_group_name, @server_name)
+        vm = nil
+        vm = @virtual_machine_lib.get(@resource_group_name, @server_name) if vm_exists
         if vm.nil?
           OOLog.info("VM '#{@server_name}' was not found. Nothing to delete. ")
-          exit 1
+          os_disk_name = "#{@server_name.to_s}_os_disk"
+          return os_disk_name,nil
         else
 
           os_disk = vm.os_disk_name
@@ -173,10 +176,12 @@ module AzureCompute
       @ip_type = 'private' if @express_route_enabled == 'true'
       OOLog.info('ip_type: ' + @ip_type)
       begin
-        vm = @virtual_machine_lib.get(@resource_group_name, @server_name)
+        vm_exists = @virtual_machine_lib.check_vm_exists?(@resource_group_name, @server_name)
+        vm = nil
+        vm = @virtual_machine_lib.get(@resource_group_name, @server_name) if vm_exists
         if vm.nil?
           OOLog.info("VM '#{@server_name}' was not found. Nothing to delete. ")
-          exit 1
+          return nil,nil,nil
         else
           # retrive the vhd name from the VM properties and use it to delete the associated VHD in the later step.
           vhd_uri = vm.os_disk_vhd_uri

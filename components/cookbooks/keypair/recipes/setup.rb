@@ -1,6 +1,6 @@
 require 'openssl'
 
-include_recipe "shared::set_provider"
+include_recipe "shared::set_provider_new"
 
 puts "env_ci_id: #{node[:workorder][:payLoad].inspect}"
 

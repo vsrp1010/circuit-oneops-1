@@ -17,9 +17,10 @@ os_disk, datadisk_uri = vm_client.delete_vm if vm_client.availability_set_respon
 node.set['storage_account'] = storage_account if vm_client.availability_set_response.sku_name.eql? 'Classic' # storage account means here managed os disk
 
 # to delete the managed OS disk
-
-vm_storage_profile = AzureCompute::StorageProfile.new(vm_client.creds) if vm_client.availability_set_response.sku_name.eql? 'Aligned'
-vm_storage_profile.delete_managed_osdisk(vm_client.resource_group_name, os_disk) if vm_client.availability_set_response.sku_name.eql? 'Aligned'
+if vm_client.availability_set_response.sku_name == 'Aligned'
+  vm_storage_profile = AzureCompute::StorageProfile.new(vm_client.creds) 
+  vm_storage_profile.delete_managed_osdisk(vm_client.resource_group_name, os_disk)
+end
 
 
 node.set['vhd_uri'] = vhd_uri
@@ -40,8 +41,10 @@ end
 
 # delete the blobs
 # Delete both Page blob(vhd) and Block Blob from the storage account
-# Delete both osdisk and datadisk blob
- include_recipe 'azure::del_blobs' if vm_client.availability_set_response.sku_name.eql? 'Classic'
+# Delete both osdisk and datadisk blob - TO-DO delete blobs correctly when VM is already deleted, and its attributes are unavailable
+if vm_client.availability_set_response.sku_name.eql? 'Classic' && !storage_account.nil? && !vhd_uri.nil?
+ include_recipe 'azure::del_blobs'
+end
 # need to taken care enhancing the Fogcode for managed data disk
 
 OOLog.info('Exiting azure delete compute')

@@ -17,7 +17,7 @@
 # limitations under the License.
 
 include_recipe "compute::node_lookup"
-include_recipe "shared::set_provider"
+include_recipe "shared::set_provider_new"
 
 Chef::Log.info("compute::delete -- name: #{node[:server_name]}")
 

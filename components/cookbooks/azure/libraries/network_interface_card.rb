@@ -1,4 +1,3 @@
-require 'fog/azurerm'
 require 'chef'
 # TODO: add checks in each method for rg_name
 require File.expand_path('../../../azuresecgroup/libraries/network_security_group.rb', __FILE__)
@@ -227,8 +226,14 @@ module AzureNetwork
       OOLog.info("Deleting NetworkInterfaceCard '#{nic_name}' from '#{resource_group_name}' ")
       start_time = Time.now.to_i
       begin
+      nic_exists = !@network_client.network_interfaces(resource_group: resource_group_name).select{|nic| (nic.name == nic_name)}.empty?
+      if !nic_exists
+        OOLog.info("NetworkInterfaceCard '#{nic_name}' in ResourceGroup '#{resource_group_name}' was not found. Skipping deletion...")
+        result = nil
+      else
         nic = @network_client.network_interfaces.get(resource_group_name, nic_name)
         result = !nic.nil? ? nic.destroy : OOLog.info('AzureNetwork::NetworkInterfaceCard - 404 code, trying to delete something that is not there.')
+      end
       rescue MsRestAzure::AzureOperationError => e
         OOLog.fatal("Error deleting NetworkInterfaceCard '#{nic_name}' in ResourceGroup '#{resource_group_name}'. Exception: #{e.body}")
       rescue => e

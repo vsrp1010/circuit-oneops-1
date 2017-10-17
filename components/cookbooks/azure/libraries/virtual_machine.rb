@@ -1,5 +1,3 @@
-require 'fog/azurerm'
-
 module AzureCompute
   class VirtualMachine
 

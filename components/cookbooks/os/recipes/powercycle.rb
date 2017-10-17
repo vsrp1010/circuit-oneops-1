@@ -1,6 +1,6 @@
 require 'fog'
 
-include_recipe "shared::set_provider"
+include_recipe "shared::set_provider_new"
 
 ruby_block 'compute powercycle' do
   block do

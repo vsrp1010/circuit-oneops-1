@@ -1,6 +1,6 @@
 require 'fog'
 
-include_recipe "shared::set_provider"
+include_recipe "shared::set_provider_new"
   
 instance_id = node.workorder.ci[:ciAttributes][:instance_id]
 server = node.iaas_provider.servers.get instance_id

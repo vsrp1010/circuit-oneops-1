@@ -15,7 +15,7 @@
 require 'fog'
 require 'json'
 
-include_recipe "shared::set_provider"
+include_recipe "shared::set_provider_new"
 
 include_recipe "compute::ssh_cmd_for_remote"
 

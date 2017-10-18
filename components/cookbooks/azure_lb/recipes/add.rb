@@ -14,59 +14,9 @@ def create_publicip(cred_hash, location, resource_group_name)
   pip
 end
 
-def get_probes_from_wo
-  ci = {}
-  ci = node.workorder.key?('rfcCi') ? node.workorder.rfcCi : node.workorder.ci
-  listeners = get_listeners()
-
-  ecvs = []
-  ecvs_raw = JSON.parse(ci[:ciAttributes][:ecv_map])
-  if ecvs_raw && listeners
-    OOLog.fatal('LB Listeners and ECVs are not the same length. Bad LB configuration!') unless ecvs_raw.length == listeners.count
-
-    ecvs_raw.each do |item|
-      # each item is an array
-      port = item[0].to_i
-      pathParts = item[1].split(' ')
-      request_path = pathParts[1]
-
-      probe_name = "Probe#{port}"
-      interval_secs = 15
-      num_probes = 3
-
-      the_listener = nil
-      listeners.each do |listener|
-        listen_port = listener[:iport].to_i
-        if listen_port == port
-          the_listener = listener
-          break
-        end
-      end
-
-      if the_listener && (the_listener[:iprotocol].upcase == 'TCP' || the_listener[:iprotocol].upcase == 'HTTPS')
-        protocol = 'Tcp'
-        request_path = nil # If Protocol is set to TCP, this value MUST BE NULL.
-      else
-        protocol = 'Http'
-      end
-
-      ecvs.push(
-          probe_name: probe_name,
-          interval_secs: interval_secs,
-          num_probes: num_probes,
-          port: port,
-          protocol: protocol,
-          request_path: request_path
-      )
-    end
-  end
-
-  ecvs
-end
-
 def get_probes
   probes = []
-  ecvs = get_probes_from_wo
+  ecvs = AzureNetwork::LoadBalancer.get_probes_from_wo(node)
 
   ecvs.each do |ecv|
     probe = AzureNetwork::LoadBalancer.create_probe(ecv[:probe_name], ecv[:protocol], ecv[:port], ecv[:interval_secs], ecv[:num_probes], ecv[:request_path])
@@ -93,59 +43,13 @@ def get_listeners_from_wo
   listeners
 end
 
-def get_listeners
-  ci = {}
-  ci = node.workorder.key?('rfcCi') ? node.workorder.rfcCi : node.workorder.ci
-
-  listeners = []
-
-  if ci
-    listeners_raw = ci['ciAttributes']['listeners']
-    ciId = ci['ciId']
-
-    listeners = []
-
-    if listeners_raw
-      listener_map = JSON.parse(listeners_raw)
-
-      listener_map.each do |item|
-        parts = item.split(' ')
-        vproto = parts[0]
-        vport = parts[1]
-        iproto = parts[2]
-        iport = parts[3]
-
-        listen_name = "listener-#{ciId}_#{vproto}_#{vport}_#{iproto}_#{iport}"
-        OOLog.info("Listener name: #{listen_name}")
-        OOLog.info("Listener vprotocol: #{vproto}")
-        OOLog.info("Listener vport: #{vport}")
-        OOLog.info("Listener iprotocol: #{iproto}")
-        OOLog.info("Listener iport: #{iport}")
-
-        listener = {
-            name: listen_name,
-            iport: iport,
-            vport: vport,
-            vprotocol: vproto,
-            iprotocol: iproto
-        }
-
-        listeners.push(listener)
-      end
-    end
-    return listeners
-  end
-
-  listeners
-end
-
 def get_loadbalancer_rules(subscription_id, resource_group_name, lb_name, env_name, platform_name, probes, frontend_ipconfig_id, backend_address_pool_id)
   lb_rules = []
 
   ci = {}
   ci = node.workorder.key?('rfcCi') ? node.workorder.rfcCi : node.workorder.ci
 
-  listeners = get_listeners()
+  listeners = AzureNetwork::LoadBalancer.get_listeners(node)
 
   listeners.each do |listener|
     lb_rule_name = "#{env_name}.#{platform_name}-#{listener[:vport]}_#{listener[:iport]}tcp-#{ci[:ciId]}-lbrule"
@@ -154,25 +58,19 @@ def get_loadbalancer_rules(subscription_id, resource_group_name, lb_name, env_na
     protocol = 'Tcp'
     load_distribution = 'Default'
 
-    ### Select the right probe for the lb rule. Ports must match
-    probe_port = nil
-    the_probe = nil
-    probes.each do |probe|
-      back_port = backend_port.to_i
-      probe_port = probe[:port].to_i
-
-      if back_port == probe_port
-        the_probe = probe
-        break
-      end
+    ### Select the right probe for the lb rule
+    the_probe = AzureNetwork::LoadBalancer.get_probe_for_listener(listener, probes)
+    if(the_probe.nil?)
+      OOLog.fatal("No valid ecv specified for listener: #{listener[:vprotocol]} #{listener[:vport]} #{listener[:iprotocol]} #{listener[:iport]}")
     end
+
     probe_id = "/subscriptions/#{subscription_id}/resourceGroups/#{resource_group_name}/providers/Microsoft.Network/loadBalancers/#{lb_name}/probes/#{the_probe[:name]}"
     lb_rule = AzureNetwork::LoadBalancer.create_lb_rule(lb_rule_name, load_distribution, protocol, frontend_port, backend_port, probe_id, frontend_ipconfig_id, backend_address_pool_id)
     OOLog.info("LB Rule: #{lb_rule_name}")
     OOLog.info("LB Rule Frontend port: #{frontend_port}")
     OOLog.info("LB Rule Backend port: #{backend_port}")
     OOLog.info("LB Rule Protocol: #{protocol}")
-    OOLog.info("LB Rule Probe port: #{probe_port}")
+    OOLog.info("LB Rule Probe port: #{the_probe[:port]}")
     OOLog.info("LB Rule Load Distribution: #{load_distribution}")
     lb_rules.push(lb_rule)
   end

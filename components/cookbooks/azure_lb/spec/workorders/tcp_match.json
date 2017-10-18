@@ -1,0 +1,14 @@
+{
+  "app_name": "lb",
+  "ip_attribute": "private_ip",
+  "name": "lb-96920452-1",
+  "workorder": {
+    "rfcCi": {
+      "ciAttributes": {
+        "listeners": "[\"http 80 tcp 5432\"]",
+        "ecv_map": "{\"5432\":\"GET health_check\"}"
+      }
+    }
+  },
+  "mgmt_domain": "stg.oneops.walmart.com"
+}

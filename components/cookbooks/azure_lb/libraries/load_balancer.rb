@@ -179,5 +179,137 @@ module AzureNetwork
           probes: probes
       }
     end
+
+    def self.get_probe_for_listener(listener, probes)
+
+      listener_backend_protocol = listener[:iprotocol]
+      listener_backend_port = listener[:iport].to_i
+
+      #ports should match
+      found = probes.select {|p| p[:port].to_i == listener_backend_port}
+
+      if(found.empty?)
+        if listener_backend_protocol.upcase == 'HTTP'
+          probes.detect {|p| p[:protocol].upcase == 'HTTP'}
+        end
+      else
+        return found[0]
+      end
+
+    end
+
+    def self.get_probes_from_wo(node)
+      ci = {}
+      ci = node['workorder'].key?('rfcCi') ? node['workorder']['rfcCi'] : node['workorder']['ci']
+      listeners = get_listeners(node)
+
+      ecvs = []
+      ecvs_raw = JSON.parse(ci['ciAttributes']['ecv_map'])
+      if ecvs_raw && listeners
+        OOLog.fatal('LB Listeners and ECVs are not the same length. Bad LB configuration!') unless ecvs_raw.length == listeners.count
+
+        interval_secs = 15
+        num_probes = 3
+
+        ecvs_raw.each do |item|
+          # each item is an array
+          port = item[0].to_i
+          pathParts = item[1].split(' ')
+          request_path = pathParts[1]
+
+          probe_name = "Probe#{port}"
+
+          the_listener = nil
+          listeners.each do |listener|
+            listen_port = listener[:iport].to_i
+            if listen_port == port
+              the_listener = listener
+              break
+            end
+          end
+
+          if the_listener && (the_listener[:iprotocol].upcase == 'TCP' || the_listener[:iprotocol].upcase == 'HTTPS')
+            protocol = 'Tcp'
+            request_path = nil # If Protocol is set to TCP, this value MUST BE NULL.
+          else
+            protocol = 'Http'
+          end
+
+          ecvs.push(
+              probe_name: probe_name,
+              interval_secs: interval_secs,
+              num_probes: num_probes,
+              port: port,
+              protocol: protocol,
+              request_path: request_path
+          )
+        end
+
+        #if a listener, with Tcp or https as backend protocol, doesn't have a matching ecv then create a new Tcp ecv for it
+        listeners.each do |l|
+          has_ecv = ecvs.any? {|ecv| ecv[:port].to_i == l[:iport].to_i}
+          if !has_ecv && (l[:iprotocol].upcase == 'TCP' || l[:iprotocol].upcase == 'HTTPS')
+            ecvs.push(
+                probe_name: "Probe#{l[:iport]}",
+                interval_secs: interval_secs,
+                num_probes: num_probes,
+                port: l[:iport].to_i,
+                protocol: 'Tcp',
+                request_path: nil
+            )
+          end
+        end
+
+      end
+
+      ecvs
+    end
+
+    def self.get_listeners(node)
+      ci = {}
+      ci = node['workorder'].key?('rfcCi') ? node['workorder']['rfcCi'] : node['workorder']['ci']
+
+      listeners = []
+
+      if ci
+        listeners_raw = ci['ciAttributes']['listeners']
+        ciId = ci['ciId']
+
+        listeners = []
+
+        if listeners_raw
+          listener_map = JSON.parse(listeners_raw)
+
+          listener_map.each do |item|
+            parts = item.split(' ')
+            vproto = parts[0]
+            vport = parts[1]
+            iproto = parts[2]
+            iport = parts[3]
+
+            listen_name = "listener-#{ciId}_#{vproto}_#{vport}_#{iproto}_#{iport}"
+            OOLog.info("Listener name: #{listen_name}")
+            OOLog.info("Listener vprotocol: #{vproto}")
+            OOLog.info("Listener vport: #{vport}")
+            OOLog.info("Listener iprotocol: #{iproto}")
+            OOLog.info("Listener iport: #{iport}")
+
+            listener = {
+                name: listen_name,
+                iport: iport,
+                vport: vport,
+                vprotocol: vproto,
+                iprotocol: iproto
+            }
+
+            listeners.push(listener)
+          end
+        end
+        return listeners
+      end
+
+      listeners
+    end
+
   end
 end

@@ -96,14 +96,13 @@ storage, device_maps = get_storage()
 if storage.nil?
   Chef::Log.info("no DependsOn Storage.")
   return
-end
-
-include_recipe "shared::set_provider_new"
-
-if (node[:provider_class] =~ /azure/)
-  require File.expand_path('../../../azure_base/libraries/utils.rb', __FILE__)
-  Utils.set_proxy(node[:workorder][:payLoad][:OO_CLOUD_VARS])
-  node.set[:resource_group] = (AzureBase::ResourceGroupManager.new(node)).rg_name
+else
+  include_recipe "shared::set_provider_new"
+  objStorage = VolumeComponent::Storage.new(node,storage,device_maps)        
+  objStorage.set_provider_data_all  
+  storage_devices = objStorage.storage_devices
+  compute = objStorage.compute
+  instance_id = objStorage.instance_id
 end
 
 raid_device = "/dev/md/"+ logical_name
@@ -137,10 +136,7 @@ ruby_block 'lvremove storage' do
 
     provider = node.iaas_provider
     storage_provider = node.storage_provider
-    instance_id = node[:workorder][:payLoad][:ManagedVia][0][:ciAttributes][:instance_id]
-    instance_id = node[:workorder][:payLoad][:ManagedVia][0][:ciAttributes][:instance_name] if instance_id.nil?
     Chef::Log.info("instance_id: "+instance_id)
-    compute = get_compute(instance_id)
 
     max_retry_count = 3
     change_count = 1
@@ -148,30 +144,32 @@ ruby_block 'lvremove storage' do
     while change_count > 0 && retry_count < max_retry_count
       change_count = 0
 
-      device_maps.each do |dev_vol|
-        vol_id,dev_id = dev_vol.split(":")
-        Chef::Log.info("vol: "+vol_id)
+      storage_devices.each do |storage_device|
 
-        volume = get_volume(vol_id)
-        Chef::Log.info( "volume:"+volume.inspect.gsub("\n",""))
+          vol_id = storage_device.storage_id
+          dev_id = storage_device.planned_device_id
+          Chef::Log.info("vol_id: #{vol_id}, planned dev_id: #{dev_id}, assigned dev_id: #{storage_device.assigned_device_id}")
+
+          volume = storage_device.object
+          Chef::Log.info("vol: "+ volume.inspect.gsub("\n"," ").gsub("<","").gsub(">","") )
+
 
         begin
-          vol_state = get_volume_status(volume)
 
-          if vol_state != "available" && vol_state != "detached"
-            if vol_state != "detaching"
+          if storage_device.is_attached
+
               Chef::Log.info("detaching "+vol_id)
 
               case provider_class
                 when /openstack/
                   attached_instance_id = ""
                   Chef::Log.warn("volume: #{volume.inspect.gsub("\n","")}")
-				  Chef::Log.warn("Volume attachments size: #{volume.attachments.size}, attachments: #{volume.attachments.inspect.gsub("\n","")}")
-				  Chef::Log.warn("attachments: #{volume.attachments[0].inspect.gsub("\n","")}")
-				  Chef::Log.warn("serverId: #{volume.attachments[0]["serverId"]}")
-				  if volume.attachments.size >0
+                  Chef::Log.warn("Volume attachments size: #{volume.attachments.size}, attachments: #{volume.attachments.inspect.gsub("\n","")}")
+                  Chef::Log.warn("attachments: #{volume.attachments[0].inspect.gsub("\n","")}")
+                  Chef::Log.warn("serverId: #{volume.attachments[0]["serverId"]}")
+                  if volume.attachments.size >0
                     attached_instance_id = volume.attachments[0]["serverId"]
-					Chef::Log.warn("attached_instance_id: #{attached_instance_id}")
+                    Chef::Log.warn("attached_instance_id: #{attached_instance_id}")
                   end
 
                   if attached_instance_id != instance_id
@@ -206,7 +204,7 @@ ruby_block 'lvremove storage' do
                 when /ibm/
                   compute.detach(volume.id)
                 when /azure/
-                  compute.detach_managed_disk(volume.name)
+                  storage_device.detach
                 else
                   # aws uses server_id
                   if volume.server_id == instance_id
@@ -216,7 +214,6 @@ ruby_block 'lvremove storage' do
                   end
               end
 
-            end
             change_count += 1
           else
             Chef::Log.info( "volume available.")

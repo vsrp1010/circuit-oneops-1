@@ -27,10 +27,13 @@
 require File.expand_path('../../../azure_base/libraries/utils.rb', __FILE__)
 require 'json'
 include_recipe 'shared::set_provider_new'
-size_config = node.workorder.rfcCi.ciAttributes["size"]
+
+rfcCi = node[:workorder][:rfcCi]
+ciAttr = rfcCi[:ciAttributes]
+size_config = ciAttr[:size]
 size_scale = size_config[-1,1]
 size = size_config.to_i.to_s.to_i
-action = node.workorder.rfcCi.rfcAction
+action = rfcCi[:rfcAction]
 if node.workorder.has_key?("payLoad") && node.workorder.payLoad.has_key?("volumes")
   mode = node.workorder.payLoad.volumes[0].ciAttributes["mode"]
 else
@@ -44,7 +47,7 @@ if size_config == "-1"
   return true
 end
 
-slice_count = node.workorder.rfcCi.ciAttributes["slice_count"].to_i
+slice_count = ciAttr[:slice_count].to_i
 slice_count = 1 if slice_count.nil?
 Chef::Log.info("size_scale: "+size_scale)
 size *= 1024 if size_scale == "T"
@@ -69,13 +72,13 @@ old_slice_count = slice_count
 old_size = size
 if action == "update"
   exit_with_error("Could not extend volume for raid mode. Recreate volumes in no-raid mode for volume extension support") if mode != "no-raid"
-  if node.workorder.rfcCi.ciBaseAttributes.has_key?("size")
-    old_size = node.workorder.rfcCi.ciBaseAttributes["size"]
+  if rfcCi[:ciBaseAttributes].has_key?(:size)
+    old_size = rfcCi[:ciBaseAttributes][:size]
   else
     Chef::Log.info("Storage requested is same as before. #{old_size}G")
     return true
   end
-  old_slice_count = node.workorder.rfcCi.ciBaseAttributes["slice_count"].to_i if node.workorder.rfcCi.ciBaseAttributes.has_key?("slice_count")
+  old_slice_count = rfcCi[:ciBaseAttributes][:slice_count].to_i if rfcCi[:ciBaseAttributes].has_key?(:slice_count)
   scale = old_size[-1,1]
   oldsize = old_size[0..-2].to_i
   size = size.to_i
@@ -98,7 +101,7 @@ if action == "update"
   else
     exit_with_error("Size of storage can not be decreased")
   end
-  vols = node.workorder.rfcCi.ciAttributes["device_map"].split(" ") if node.workorder.rfcCi.ciAttributes.has_key?("device_map")
+  vols = ciAttr[:device_map].split(" ") if ciAttr.has_key?(:device_map)
   if mode == "no-raid" || mode == "raid0"
     slice_size = (slice_size.to_f / slice_count.to_f).ceil
   else
@@ -137,7 +140,7 @@ Array(1..slice_count).each do |i|
   when /cinder/
     begin
       include_recipe 'storage::node_lookup'
-      vol_name = node["workorder"]["rfcCi"]["ciName"]+"-"+node["workorder"]["rfcCi"]["ciId"].to_s
+      vol_name = rfcCi[:ciName] + "-" + rfcCi[:ciId].to_s
       Chef::Log.info("Volume type selected in the storage component:"+node.volume_type_from_map)
       Chef::Log.info("Creating volume of size:#{slice_size} , volume_type:#{node.volume_type_from_map}, volume_name:#{vol_name} .... ")
       volume = node.storage_provider.volumes.new :device => dev, :size => slice_size, :name => vol_name,
@@ -151,7 +154,7 @@ Array(1..slice_count).each do |i|
 
   when /rackspace/
     begin
-      vol_name = node["workorder"]["rfcCi"]["ciName"]+"-"+node["workorder"]["rfcCi"]["ciId"].to_s
+      vol_name = rfcCi[:ciName] +"-" + rfcCi[:ciId].to_s
       volume = node.storage_provider.volumes.new :display_name => vol_name, :size => slice_size.to_i
       volume.save
     rescue Exception => e
@@ -159,7 +162,7 @@ Array(1..slice_count).each do |i|
     end
   when /ibm/
     volume = node.storage_provider.volumes.new({
-      :name => node.workorder.rfcCi.ciName,
+      :name => rfcCi[:ciName],
       :format => "RAW",
       :location_id => "41",
       :size => "60",
@@ -189,23 +192,37 @@ Array(1..slice_count).each do |i|
       Utils.set_proxy(node[:workorder][:payLoad][:OO_CLOUD_VARS])
 
       compute_attr = node[:workorder][:payLoad][:DependsOn].select{|d| (d[:ciClassName].split('.').last == 'Compute') }.first[:ciAttributes]
-      if Utils.is_prm(compute_attr[:size], false) && node[:workorder][:rfcCi][:ciAttributes][:volume_type] == 'IOPS1'
+      if Utils.is_prm(compute_attr[:size], false) && ciAttr[:volume_type] == 'IOPS1'
         account_type = 'Premium_LRS'
       else
         account_type = 'Standard_LRS'
       end
-      vol_name = node[:workorder][:rfcCi][:ciName] + '-' + node[:workorder][:rfcCi][:ciId].to_s + '-' + dev.split('/').last.to_s
+      vol_name = rfcCi[:ciName] + '-' + rfcCi[:ciId].to_s + '-' + dev.split('/').last.to_s
       rg_manager = AzureBase::ResourceGroupManager.new(node)
 
-      volume = node.storage_provider.managed_disks.create(
-        name: vol_name,
-        location: rg_manager.location,
-        resource_group_name: rg_manager.rg_name,
-        account_type: account_type,
-        disk_size_gb: slice_size,
-        creation_data: { create_option: 'Empty' }
-      )
-      Chef::Log.info("Managed disk created: #{volume.inspect.gsub("\n",'')}")
+      availability_set_response = node[:storage_provider].availability_sets.get(rg_manager.rg_name, rg_manager.rg_name)
+
+      if availability_set_response.sku_name == 'Aligned'
+        volume = node.storage_provider.managed_disks.create(
+          name: vol_name,
+          location: rg_manager.location,
+          resource_group_name: rg_manager.rg_name,
+          account_type: account_type,
+          disk_size_gb: slice_size,
+          creation_data: { create_option: 'Empty' }
+        )
+        Chef::Log.info("Managed disk created: #{volume.inspect.gsub("\n",'')}")
+        volume_dev = [vol_name, dev].join(':')
+      else
+        #The old way - unmanaged disk
+        vm = node[:storage_provider].servers(resource_group: rg_manager.rg_name).get(rg_manager.rg_name, compute_attr[:instance_name])
+        storage_account_name = vm.storage_account_name
+        vhd_blobname = [storage_account_name,rfcCi[:ciId].to_s,'datadisk',dev.split('/').last.to_s].join('-')
+
+        storage_service = get_azure_storage_service(rg_manager.creds, rg_manager.rg_name, storage_account_name)
+        storage_service.create_disk(vhd_blobname, slice_size.to_i, options = {})
+        volume_dev = [rg_manager.rg_name, storage_account_name, rfcCi[:ciId].to_s, slice_size.to_s, dev].join(':')
+      end #if availability_set_response.sku_name == 'Aligned'
 
     else
     # aws
@@ -220,9 +237,7 @@ Array(1..slice_count).each do |i|
     volume = node.storage_provider.volumes.new :device => dev, :size => slice_size, :availability_zone => avail_zone
   end
 
-  if node.storage_provider_class =~ /azure/
-    volume_dev = volume.name.to_s + ':' + dev
-  else
+  if node.storage_provider_class !~ /azuredatadisk/
     volume_dev = volume.id.to_s + ':' + dev
   end
   Chef::Log.info("Adding #{volume_dev} to device map")

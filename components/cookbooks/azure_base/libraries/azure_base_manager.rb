@@ -7,7 +7,8 @@ module AzureBase
   class AzureBaseManager
 
     attr_accessor :cloud_name,
-                  :creds
+                  :creds,
+                  :service
 
     def initialize(node)
       @cloud_name = node[:workorder][:cloud][:ciName]

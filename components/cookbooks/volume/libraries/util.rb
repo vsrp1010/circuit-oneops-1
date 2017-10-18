@@ -103,10 +103,15 @@ def get_compute (instance_id)
   return compute
 end
 
-def get_volume (vol_id)
+def get_volume (vol_id, instance_id = nil)
   volume = nil
   if node[:storage_provider_class] =~ /azuredatadisk/
-    volume = node[:storage_provider].managed_disks.get(node[:resource_group], vol_id)
+    if vol_id =~ /datadisk/ 
+      volume = get_compute(instance_id).data_disks.select{|dd| (dd.name == vol_id)}[0]
+    else
+      volume = node[:storage_provider].managed_disks.get(node[:resource_group], vol_id)
+    end
+
   elsif node[:storage_provider_class] =~ /cinder/
     volume = node[:iaas_provider].volumes.get vol_id
   else
@@ -118,10 +123,10 @@ end
 def get_volume_status (volume)
   status = nil
   if node[:storage_provider_class] =~ /azuredatadisk/
-    if volume.owner_id.nil?
-      status = 'detached'
-    else
+    if (volume.respond_to?('name') && volume.name =~ /datadisk/) || (volume.respond_to?('owner_id') && !volume.owner_id.nil?)
       status = 'attached'
+    else
+      status = 'detached'
     end
   elsif node[:storage_provider_class] =~ /cinder/
     status = volume.status

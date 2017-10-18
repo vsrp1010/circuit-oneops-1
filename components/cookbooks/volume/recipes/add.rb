@@ -38,8 +38,16 @@ end
 
 storage = nil
 storage,device_maps = get_storage()
+
 rfcCi = node[:workorder][:rfcCi]
 attrs = rfcCi[:ciAttributes]
+
+#Check size
+size = attrs[:size].gsub(/\s+/, "")
+if size == '-1'
+  Chef::Log.info('skipping because size = -1')
+  return
+end
 
 #Check raid requirements
 mode = attrs[:mode]
@@ -56,17 +64,13 @@ end
 
 include_recipe "shared::set_provider_new"
 
-size = attrs[:size].gsub(/\s+/, "")
-if size == '-1'
-  Chef::Log.info('skipping because size = -1')
-  return
+if !storage.nil?
+  include_recipe "shared::set_provider_new"
+  objStorage = VolumeComponent::Storage.new(node,storage,device_maps)        
+  objStorage.set_provider_data_all  
+  storage_devices = objStorage.storage_devices
+  compute = objStorage.compute
 end
-
-if (node[:provider_class] =~ /azure/) && !storage.nil?
-  require File.expand_path('../../../azure_base/libraries/utils.rb', __FILE__)
-  Utils.set_proxy(node[:workorder][:payLoad][:OO_CLOUD_VARS])
-  node.set[:resource_group] = (AzureBase::ResourceGroupManager.new(node)).rg_name
- end
 
 package 'lvm2'
 package 'mdadm' do
@@ -96,27 +100,23 @@ Chef::Log.info("-------------------------------------------------------------")
 
 # need ruby block so package resource above run first
 ruby_block 'create-iscsi-volume-ruby-block' do
+  not_if {storage.nil?}
   block do
 
-    if storage.nil?
-      Chef::Log.info("no DependsOn Storage - skipping")
-    else
-
-        instance_id = node[:workorder][:payLoad][:ManagedVia][0][:ciAttributes][:instance_id]
-        instance_id = node[:workorder][:payLoad][:ManagedVia][0][:ciAttributes][:instance_name] if instance_id.nil?
-        Chef::Log.info("instance_id: "+instance_id)
-        compute = get_compute(instance_id)
         vols = Array.new
         dev_list = ""
 
-        device_maps.each do |dev_vol|
-          vol_id, dev_id = dev_vol.split(':')
-          Chef::Log.info("vol_id: "+vol_id)
+        storage_devices.each do |storage_device|
 
-          vol = get_volume(vol_id)
+          vol_id = storage_device.storage_id
+          dev_id = storage_device.planned_device_id
+          Chef::Log.info("vol_id: #{vol_id}, planned dev_id: #{dev_id}, assigned dev_id: #{storage_device.assigned_device_id}")
+
+          vol = storage_device.object
           Chef::Log.info("vol: "+ vol.inspect.gsub("\n"," ").gsub("<","").gsub(">","") )
 
           begin
+            #TO-DO move the rest of providers attach action to attach method of StorageDevice object
 
             case token_class
               when /ibm/
@@ -141,38 +141,8 @@ ruby_block 'create-iscsi-volume-ruby-block' do
                 node.set["raid_device"] = dev_id
 
               when /openstack/
-                if vol.attachments != nil && vol.attachments.size > 0 &&
-                    vol.attachments[0]["serverId"] == instance_id
-                  Chef::Log.error("attached already, no way to determine device")
-                  # mdadm sometime reassembles with _0
-                  new_raid_device = execute_command("ls -1 #{raid_device}* 2>/dev/null").stdout.chop
-                  non_raid_device = execute_command("ls -1 /dev/#{platform_name}/#{logical_name}* 2>/dev/null").stdout.chop
-                  if new_raid_device.empty? && non_raid_device.empty?
-                    Chef::Log.warn("Cleanup Failed Attempt ")
-                    vol.detach instance_id, vol_id
-                    exit 1
-                  else
-                    if new_raid_device.empty?
-                      raid_device = non_raid_device
-                      no_raid_device = non_raid_device
-                    else
-                      raid_device = new_raid_device
-                      no_raid_device = new_raid_device
-                    end
-                  next
-                  end
-                end
-
-                Chef::Log.info("-------------------------------------------")
-                Chef::Log.info("dev_id: "+dev_id)
-                Chef::Log.info("Instance_id: "+instance_id)
-                # determine new device by by watching /dev because openstack (kvm) doesn't attach it to the specified device
-                orig_device_list = execute_command('ls -1 /dev/vd*').stdout.split("\n")
-                vol.attach instance_id, dev_id
-                dev_id = get_device_id(orig_device_list, 'vd', 12, 15)
-                Chef::Log.info "Assigned Device: "+dev_id
-                Chef::Log.info("-------------------------------------------")
-                no_raid_device = dev_id
+                storage_device.attach unless storage_device.is_attached
+                dev_id = storage_device.assigned_device_id
 
               when /rackspace/
                 rackspace_dev_id = dev_id.gsub(/\d+/,"")
@@ -191,13 +161,8 @@ ruby_block 'create-iscsi-volume-ruby-block' do
                 vol.server = compute
 
               when /azure/
-                if vol.owner_id.nil?
-                  orig_device_list = execute_command('ls -1 /dev/sd*').stdout.split("\n")
-                  compute.attach_managed_disk(vol_id, node[:resource_group])
-                  dev_id = get_device_id(orig_device_list, 'sd', 5, 10)
-                else
-                  Chef::Log.warn("Managed disk #{vol.name} is already attached to #{vol.owner_id}")
-                end
+                storage_device.attach unless storage_device.is_attached
+                dev_id = storage_device.assigned_device_id
 
             end
           rescue Fog::Compute::AWS::Error=>e
@@ -208,29 +173,23 @@ ruby_block 'create-iscsi-volume-ruby-block' do
               exit 1
             end
           end
+
+          Chef::Log.warn("storage: #{storage_device.storage_id}, attached?: #{storage_device.is_attached}, Planned dev_id: #{storage_device.planned_device_id}, Assigned dev_id: #{storage_device.assigned_device_id}")
+
+          # wait until all are attached
+          max_retry = 10
+          retry_count = 0
+          while !storage_device.is_attached && retry_count < max_retry do
+            storage_device.set_provider_data
+            retry_count += 1
+            sleep 10 unless storage_device.is_attached
+          end
+
+          exit_with_error("Could not determined assigned device_id for storage #{storage_device.storage_id}") if dev_id.nil?
           vols.push vol_id
           dev_list += dev_id+" "
-        end
+        end #storage_devices.each do |storage_device|
 
-        # wait until all are attached
-        fin = false
-        max_retry = 10
-        retry_count = 0
-        while !fin && retry_count<max_retry do
-          fin = true
-          vols.each do |vol_id|
-            vol = get_volume(vol_id)
-            vol_state = get_volume_status(vol)
-            Chef::Log.info("vol: "+vol_id+" state:"+vol_state)
-
-            if vol_state.downcase != "attached" && vol_state.downcase != "in-use"
-              fin = false
-              sleep 10
-            end
-          end
-          retry_count +=1
-
-        end
 
       newDevicesAttached = dev_list
       has_created_raid = false
@@ -269,10 +228,7 @@ ruby_block 'create-iscsi-volume-ruby-block' do
         Chef::Log.info("No Raid Device ID :" +no_raid_device)
         raid_device = no_raid_device
         node.set["raid_device"] = no_raid_device
-
-      end
-
-    end
+      end #if vols.size > 1 && mode != 'no-raid'
 
   end
 end

@@ -174,7 +174,7 @@ ruby_block 'create-iscsi-volume-ruby-block' do
             end
           end
 
-          Chef::Log.warn("storage: #{storage_device.storage_id}, attached?: #{storage_device.is_attached}, Planned dev_id: #{storage_device.planned_device_id}, Assigned dev_id: #{storage_device.assigned_device_id}")
+          Chef::Log.info("storage: #{storage_device.storage_id}, attached?: #{storage_device.is_attached}, Planned dev_id: #{storage_device.planned_device_id}, Assigned dev_id: #{storage_device.assigned_device_id}")
 
           # wait until all are attached
           max_retry = 10

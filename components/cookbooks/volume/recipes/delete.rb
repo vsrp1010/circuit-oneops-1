@@ -163,13 +163,9 @@ ruby_block 'lvremove storage' do
               case provider_class
                 when /openstack/
                   attached_instance_id = ""
-                  Chef::Log.warn("volume: #{volume.inspect.gsub("\n","")}")
-                  Chef::Log.warn("Volume attachments size: #{volume.attachments.size}, attachments: #{volume.attachments.inspect.gsub("\n","")}")
-                  Chef::Log.warn("attachments: #{volume.attachments[0].inspect.gsub("\n","")}")
-                  Chef::Log.warn("serverId: #{volume.attachments[0]["serverId"]}")
+
                   if volume.attachments.size >0
                     attached_instance_id = volume.attachments[0]["serverId"]
-                    Chef::Log.warn("attached_instance_id: #{attached_instance_id}")
                   end
 
                   if attached_instance_id != instance_id

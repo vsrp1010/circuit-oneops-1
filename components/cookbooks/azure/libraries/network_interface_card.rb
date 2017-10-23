@@ -9,7 +9,7 @@ require 'ipaddr'
 module AzureNetwork
   # class to implement all functionality needed for an Azure NIC.
   class NetworkInterfaceCard
-    attr_accessor :location, :rg_name, :private_ip, :profile, :ci_id, :network_client, :publicip, :subnet_cls, :virtual_network, :nsg, :flag
+    attr_accessor :location, :rg_name, :private_ip, :profile, :ci_id, :network_client, :publicip, :subnet_cls, :virtual_network, :nsg, :flag, :tags
     attr_reader :creds, :subscription
 
     def initialize(creds)
@@ -50,6 +50,7 @@ module AzureNetwork
       network_interface.ip_configuration_name = nic_ip_config.name
       network_interface.subnet_id = nic_ip_config.subnet_id
       network_interface.public_ip_address_id = nic_ip_config.public_ipaddress_id
+      network_interface.tags = @tags
 
       OOLog.info("Network Interface name is: #{network_interface.name}")
       network_interface
@@ -89,7 +90,8 @@ module AzureNetwork
                                                                ip_configuration_name: network_interface.ip_configuration_name,
                                                                private_ip_allocation_method: network_interface.private_ip_allocation_method,
                                                                load_balancer_backend_address_pools_ids: network_interface.load_balancer_backend_address_pools_ids,
-                                                               load_balancer_inbound_nat_rules_ids: network_interface.load_balancer_inbound_nat_rules_ids)
+                                                               load_balancer_inbound_nat_rules_ids: network_interface.load_balancer_inbound_nat_rules_ids,
+                                                               tags: network_interface.tags)
         end
 
         end_time = Time.now.to_i

@@ -167,7 +167,7 @@ module AzureNetwork
       }
     end
 
-    def self.get_lb(resource_group_name, lb_name, location, frontend_ip_configs, backend_address_pools, lb_rules, nat_rules, probes)
+    def self.get_lb(resource_group_name, lb_name, location, frontend_ip_configs, backend_address_pools, lb_rules, nat_rules, probes, tags)
       {
           name: lb_name,
           resource_group: resource_group_name,
@@ -176,7 +176,8 @@ module AzureNetwork
           backend_address_pool_names: backend_address_pools,
           load_balancing_rules: lb_rules,
           inbound_nat_rules: nat_rules,
-          probes: probes
+          probes: probes,
+          tags: tags
       }
     end
 

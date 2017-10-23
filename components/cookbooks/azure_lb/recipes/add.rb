@@ -283,7 +283,8 @@ nat_rules = []
 get_compute_nat_rules(frontend_ipconfig_id, nat_rules, compute_natrules)
 
 # Configure LB properties
-load_balancer = AzureNetwork::LoadBalancer.get_lb(resource_group_name, lb_name, location, frontend_ipconfigs, backend_address_pools, lb_rules, nat_rules, probes)
+tags = Utils.get_resource_tags(node)
+load_balancer = AzureNetwork::LoadBalancer.get_lb(resource_group_name, lb_name, location, frontend_ipconfigs, backend_address_pools, lb_rules, nat_rules, probes, tags)
 
 # Create LB
 lb_svc = AzureNetwork::LoadBalancer.new(creds)

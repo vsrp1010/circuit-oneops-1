@@ -8,7 +8,13 @@ Utils.set_proxy(node['workorder']['payLoad']['OO_CLOUD_VARS'])
 # get platform resource group and availability set
 include_recipe 'azure::get_platform_rg_and_as'
 
+tags = Utils.get_resource_tags(node)
+
+OOLog.info("tags are: #{tags.inspect}")
+
 vm_manager = AzureCompute::VirtualMachineManager.new(node)
+vm_manager.tags = tags
+
 compute_service = vm_manager.compute_service
 
 credentials = {

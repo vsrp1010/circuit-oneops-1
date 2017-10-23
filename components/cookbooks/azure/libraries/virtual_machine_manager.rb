@@ -12,7 +12,8 @@ module AzureCompute
                   :storage_profile,
                   :network_profile,
                   :virtual_machine_lib,
-                  :availability_set_response
+                  :availability_set_response,
+                  :tags
 
     def initialize(node)
       @cloud_name = node['workorder']['cloud']['ciName']
@@ -30,6 +31,7 @@ module AzureCompute
       @platform = @compute_service[:ostype].include?('windows') ? 'windows' : 'linux'
       @platform_ci_id = node['workorder']['box']['ciId']
       @compute_ci_id = node['workorder']['rfcCi']['ciId']
+      @tags = {}
 
       @creds = {
           tenant_id: @compute_service[:tenant_id],
@@ -69,11 +71,13 @@ module AzureCompute
       @network_profile.location = @location
       @network_profile.rg_name = @resource_group_name
       @network_profile.ci_id = @compute_ci_id
+      @network_profile.tags = @tags
       # build hash containing vm info
       # used in Fog::Compute::AzureRM::create_virtual_machine()
       vm_hash = {}
 
       # common values
+      vm_hash[:tags] = @tags
       vm_hash[:name] = @server_name
       vm_hash[:resource_group] = @resource_group_name
 

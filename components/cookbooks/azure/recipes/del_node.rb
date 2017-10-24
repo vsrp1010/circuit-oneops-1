@@ -42,7 +42,7 @@ end
 # delete the blobs
 # Delete both Page blob(vhd) and Block Blob from the storage account
 # Delete both osdisk and datadisk blob - TO-DO delete blobs correctly when VM is already deleted, and its attributes are unavailable
-if vm_client.availability_set_response.sku_name.eql? 'Classic' && !storage_account.nil? && !vhd_uri.nil?
+if (vm_client.availability_set_response.sku_name.eql? 'Classic') && !storage_account.nil? && !vhd_uri.nil?
  include_recipe 'azure::del_blobs'
 end
 # need to taken care enhancing the Fogcode for managed data disk

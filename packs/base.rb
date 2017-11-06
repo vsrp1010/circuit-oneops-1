@@ -681,21 +681,37 @@ resource "volume",
      'definition' => '{
        "returnObject": false,
        "returnRelation": false,
-       "relationName": "bom.DependsOn",
-       "direction": "from",
-       "targetClassName": "bom.oneops.1.Storage",
+       "relationName": "base.RealizedAs",
+       "direction": "to",
+       "targetClassName": "manifest.oneops.1.Volume",
        "relations": [
          { "returnObject": false,
            "returnRelation": false,
-           "relationName": "base.DeployedTo",
+           "relationName": "manifest.DependsOn",
            "direction": "from",
-           "targetClassName": "account.Cloud",
+           "targetClassName": "manifest.oneops.1.Storage",
            "relations": [
-             { "returnObject": true,
+             { "returnObject": false,
                "returnRelation": false,
-               "relationName": "base.Provides",
-               "relationAttrs":[{"attributeName":"service", "condition":"eq", "avalue":"storage"}],
-               "direction": "from"
+               "relationName": "manifest.Requires",
+               "direction": "to",
+               "targetClassName": "manifest.Platform",
+               "relations": [
+                 { "returnObject": false,
+                   "returnRelation": false,
+                   "relationName": "base.Consumes",
+                   "direction": "from",
+                   "targetClassName": "account.Cloud",
+                   "relations": [
+                     { "returnObject": true,
+                       "returnRelation": false,
+                       "relationName": "base.Provides",
+                       "relationAttrs":[{"attributeName":"service", "condition":"eq", "avalue":"storage"}],
+                       "direction": "from"
+                     }
+                   ]
+                 }
+               ]
              }
            ]
          }

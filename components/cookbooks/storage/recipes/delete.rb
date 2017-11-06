@@ -22,9 +22,10 @@ provider_class = node[:workorder][:services][:storage][cloud_name][:ciClassName]
 include_recipe "shared::set_provider"           
 dev_map = node.workorder.rfcCi.ciAttributes["device_map"]
 if provider_class =~ /azure/
-  Chef::Log.info("Deleting the data disk ...")
-  include_recipe "azuredatadisk::delete" # delete the datadisk permanently 
-  return true
+  require File.expand_path('../../../azure_base/libraries/utils.rb', __FILE__)
+  Utils.set_proxy(node[:workorder][:payLoad][:OO_CLOUD_VARS])
+  resource_group = (AzureBase::ResourceGroupManager.new(node)).rg_name
+  instance_name = node[:workorder][:payLoad][:DependsOn].select{|d| (d[:ciClassName].split('.').last == 'Compute') }.first[:ciAttributes][:instance_name]
 end
 
 unless dev_map.nil?
@@ -38,7 +39,11 @@ unless dev_map.nil?
       ok = true
       volume = nil
       begin
-        volume = node.storage_provider.volumes.get vol_id
+        if provider_class =~ /azure/
+          volume = node.storage_provider.managed_disks.get(resource_group, vol_id)
+        else
+          volume = node.storage_provider.volumes.get vol_id
+        end
       rescue => e
         Chef::Log.error("getting volume exception: "+e.message)
         next
@@ -46,9 +51,15 @@ unless dev_map.nil?
       
       begin
         unless volume.nil?
-          data = { 'os-detach' => { 'volume_id' => "#{vol_id}" } }
-          uuid = "#{vol_id}"
-          node.storage_provider.action(uuid, data)
+          if provider_class =~ /azure/
+            if !volume.owner_id.nil?
+              server = node.storage_provider.servers(resource_group: resource_group).get(resource_group, instance_name)
+              server.detach_managed_disk(volume.name)
+            end
+          else
+            data = { 'os-detach' => { 'volume_id' => "#{vol_id}" } }
+            node.storage_provider.action(vol_id, data)
+          end
         end
       rescue => e
         Chef::Log.error("getting volume detach exception: "+e.message)

@@ -27,7 +27,6 @@
 require File.expand_path('../../../azure_base/libraries/utils.rb', __FILE__)
 require 'json'
 include_recipe 'shared::set_provider'
-provider = node['provider_class']
 size_config = node.workorder.rfcCi.ciAttributes["size"]
 size_scale = size_config[-1,1]
 size = size_config.to_i.to_s.to_i
@@ -138,7 +137,7 @@ Array(1..slice_count).each do |i|
   when /cinder/
     begin
       include_recipe 'storage::node_lookup'
-      vol_name = node["workorder"]["rfcCi"]["ciName"]+"-"+node["workorder"]["rfcCi"]["ciId"].to_s                  
+      vol_name = node["workorder"]["rfcCi"]["ciName"]+"-"+node["workorder"]["rfcCi"]["ciId"].to_s
       Chef::Log.info("Volume type selected in the storage component:"+node.volume_type_from_map)
       Chef::Log.info("Creating volume of size:#{slice_size} , volume_type:#{node.volume_type_from_map}, volume_name:#{vol_name} .... ")
       volume = node.storage_provider.volumes.new :device => dev, :size => slice_size, :name => vol_name,
@@ -175,7 +174,7 @@ Array(1..slice_count).each do |i|
     vol = node.storage_provider.volumes.get volume.id
     while vol.state != "Detached" && retry_count < max_retry_count
       sleep 60
-      vol = provider.volumes.get volume.id
+      vol = node.storage_provider.volumes.get volume.id
       retry_count += 1
       Chef::Log.info("vol state: "+vol.state)
     end
@@ -185,20 +184,28 @@ Array(1..slice_count).each do |i|
     end
 
     when /azuredatadisk/
-      if node.workorder.services.has_key?("storage")
-        cloud_name = node[:workorder][:cloud][:ciName]
-        storage_service = node[:workorder][:services][:storage][cloud_name]
-        storage = storage_service["ciAttributes"]
-        size = node[:workorder][:payLoad][:RequiresComputes][0][:ciAttributes][:size]
-        
-        if Utils.is_prm(size, false)
-          volume = storage.master_rg+":"+storage.storage_account_prm+":"+(node.workorder.rfcCi.ciId).to_s+":"+slice_size.to_s
-          Chef::Log.info("Choosing Premium Storage Account: #{storage.storage_account_prm}") 
-        else
-          volume = storage.master_rg+":"+storage.storage_account_std+":"+(node.workorder.rfcCi.ciId).to_s+":"+slice_size.to_s
-          Chef::Log.info("Choosing Standard Storage Account: #{storage.storage_account_std}") 
-        end       
+
+      #set the proxy if it exists as a cloud var
+      Utils.set_proxy(node[:workorder][:payLoad][:OO_CLOUD_VARS])
+
+      compute_attr = node[:workorder][:payLoad][:DependsOn].select{|d| (d[:ciClassName].split('.').last == 'Compute') }.first[:ciAttributes]
+      if Utils.is_prm(compute_attr[:size], false) && node[:workorder][:rfcCi][:ciAttributes][:volume_type] == 'IOPS1'
+        account_type = 'Premium_LRS'
+      else
+        account_type = 'Standard_LRS'
       end
+      vol_name = node[:workorder][:rfcCi][:ciName] + '-' + node[:workorder][:rfcCi][:ciId].to_s + '-' + dev.split('/').last.to_s
+      rg_manager = AzureBase::ResourceGroupManager.new(node)
+
+      volume = node.storage_provider.managed_disks.create(
+        name: vol_name,
+        location: rg_manager.location,
+        resource_group_name: rg_manager.rg_name,
+        account_type: account_type,
+        disk_size_gb: slice_size,
+        creation_data: { create_option: 'Empty' }
+      )
+      Chef::Log.info("Managed disk created: #{volume.inspect.gsub("\n",'')}")
 
     else
     # aws
@@ -214,16 +221,12 @@ Array(1..slice_count).each do |i|
   end
 
   if node.storage_provider_class =~ /azure/
-    Chef::Log.info("Adding #{dev} to the device list")
-    vols.push(volume.to_s+":"+dev)
-    node.set["device_map"] = vols.join(" ")
-    include_recipe "azuredatadisk::add" #Create datadisk, but doesn't attach it to the compute
-    Chef::Log.info("Attaching storage to compute")
-    include_recipe "azuredatadisk::attach"
+    volume_dev = volume.name.to_s + ':' + dev
   else
-    Chef::Log.info("added "+volume.id.to_s)
-    vols.push(volume.id.to_s+":"+dev)
+    volume_dev = volume.id.to_s + ':' + dev
   end
+  Chef::Log.info("Adding #{volume_dev} to device map")
+  vols.push(volume_dev)
 end
 
 puts "***RESULT:device_map="+vols.join(" ")

@@ -1023,6 +1023,7 @@ end
   { :from => 'objectstore',  :to => 'user'},
   { :from => 'baas-job', :to => 'os'},
   { :from => 'baas-job', :to => 'volume'  },
+  { :from => 'baas-job', :to => 'java'},
   { :from => 'service-mesh', :to => 'os'},
   { :from => 'service-mesh', :to => 'volume'},
   { :from => 'service-mesh', :to => 'java'}
